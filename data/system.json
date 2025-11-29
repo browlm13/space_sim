@@ -1,0 +1,138 @@
+{
+  "id": "rr",
+  "name": "Romulus–Remus System",
+  "bodies": [
+    {
+      "id": "rr_bary",
+      "name": "RR Barycenter",
+      "type": "barycenter",
+      "parent": null,
+      "a": 0.0,
+      "radius": 0,
+      "visual_size": 4,
+      "color": "#ffffff"
+    },
+
+    {
+      "id": "romulus",
+      "name": "Romulus",
+      "type": "star",
+      "parent": "rr_bary",
+      "a": 0.05,
+      "radius": 700000,
+      "visual_size": 12,
+      "color": "#ffddaa",
+      "period_years": 0.30,
+      "phase_deg": 0
+    },
+    {
+      "id": "remus",
+      "name": "Remus",
+      "type": "star",
+      "parent": "rr_bary",
+      "a": 0.05,
+      "radius": 650000,
+      "visual_size": 11,
+      "color": "#ffd4c0",
+      "period_years": 0.30,
+      "phase_deg": 180
+    },
+
+    {
+      "id": "cinder",
+      "name": "Cinder",
+      "type": "planet",
+      "parent": "rr_bary",
+      "a": 0.25,
+      "radius": 4000,
+      "visual_size": 5,
+      "color": "#d56f3f",
+      "meta": {
+        "short_description": "Inner, hot, tectonically abused world."
+      }
+    },
+    {
+      "id": "gaia",
+      "name": "Gaia",
+      "type": "planet",
+      "parent": "rr_bary",
+      "a": 0.75,
+      "radius": 6400,
+      "visual_size": 7,
+      "color": "#4ea3ff",
+      "meta": {
+        "gravity_g": 1.02,
+        "population_estimate": "3.4e9",
+        "short_description": "Primary cradle of RR culture."
+      }
+    },
+    {
+      "id": "colossus",
+      "name": "Colossus",
+      "type": "gas_giant",
+      "parent": "rr_bary",
+      "a": 1.8,
+      "radius": 60000,
+      "visual_size": 10,
+      "color": "#f1c46a",
+      "meta": {
+        "short_description": "Massive golden giant straddling the warm outer band."
+      }
+    },
+    {
+      "id": "prosperity",
+      "name": "Prosperity",
+      "type": "gas_giant",
+      "parent": "rr_bary",
+      "a": 3.5,
+      "radius": 55000,
+      "visual_size": 10,
+      "color": "#c48cff",
+      "meta": {
+        "short_description": "Ring-laced lavender giant with a crowded moon system."
+      }
+    },
+
+    {
+      "id": "belt_main",
+      "name": "Main Belt",
+      "type": "belt",
+      "parent": "rr_bary",
+      "a": 2.6,
+      "radius": 0,
+      "visual_size": 0,
+      "color": "#666666"
+    },
+
+    {
+      "id": "pros_moon_1",
+      "name": "S1",
+      "type": "moon",
+      "parent": "prosperity",
+      "a": 0.02,
+      "radius": 1500,
+      "visual_size": 4,
+      "color": "#aaaaaa"
+    },
+    {
+      "id": "pros_moon_2",
+      "name": "S2",
+      "type": "moon",
+      "parent": "prosperity",
+      "a": 0.035,
+      "radius": 2200,
+      "visual_size": 4,
+      "color": "#cccccc"
+    },
+    {
+      "id": "pros_moon_3",
+      "name": "S3",
+      "type": "moon",
+      "parent": "prosperity",
+      "a": 0.055,
+      "radius": 2600,
+      "visual_size": 4,
+      "color": "#ccbbaa"
+    }
+  ]
+}
