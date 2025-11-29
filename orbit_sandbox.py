@@ -8,14 +8,13 @@ Features
 --------
 - Load either:
     * a system JSON: { "id": "...", "name": "...", "bodies": [...] }
-    * a universe JSON: { "systems": [ { "id": "...", "bodies_file": "...", ... }, ... ] }
+    * a universe JSON: { "systems": [ { "id": "...", "bodies_file": "...", ... } ] }
 - Animate circular orbits using Kepler-style T ~ a^(3/2).
 - Hierarchical orbits: barycenter -> stars -> planets -> moons.
 - Top-down AND isometric view modes (toggle with V).
 - System vs Local (moon-system) scope (toggle with M).
 - Time controls, zoom, focus, click-to-focus.
-- Info panel acts as a mini wiki: orbit stats + gravity, population, atmosphere, species, etc.
-- Shows distance from center in light-minutes and straight-line travel times at 0.1c / 0.01c.
+- Sidebar info panel with orbit stats and lore metadata from JSON.
 
 Usage
 -----
@@ -38,8 +37,7 @@ from typing import Dict, List, Optional, Tuple
 import pygame
 
 AU_IN_KM = 149_597_870.7
-SHIP_SPEED_KM_S = 20.0      # for "time to go once around"
-SPEED_OF_LIGHT_KM_S = 299_792.458
+SHIP_SPEED_KM_S = 20.0  # for "time to go once around"
 
 
 # ---------- Data model ----------
@@ -254,7 +252,7 @@ class OrbitSandbox:
         self.system = system
         self.sim_time_years = 0.0
         self.running = True
-        self.time_scale = 1.0  # global years-per-second
+        self.time_scale = 1.0  # years per second of real time
 
         # Projection: "top" or "iso"
         self.view_mode = "top"
@@ -269,7 +267,7 @@ class OrbitSandbox:
         self.small_font = pygame.font.SysFont("consolas", 13)
 
         self.show_belts = True
-        self.show_moons = False
+        self.show_moons = True  # default ON so you can see moons
         self.show_dwarfs = True
 
         self.focusables = system.ordered_focusable_bodies()
@@ -459,7 +457,7 @@ class OrbitSandbox:
         else:
             self.draw_system_view()
 
-        # Info panel & help
+        # Sidebar info panel & help
         self.draw_info_panel()
         self.draw_help_overlay()
 
@@ -558,17 +556,36 @@ class OrbitSandbox:
         self.screen.blit(txt, (rect.x + 5, rect.y + 5))
 
     def draw_info_panel(self):
+        # Sidebar on the right
+        sidebar_width = int(self.width * 0.30)
+        rect = pygame.Rect(self.width - sidebar_width, 0, sidebar_width, self.height)
+        pygame.draw.rect(self.screen, (5, 5, 15), rect)
+        pygame.draw.rect(self.screen, (80, 80, 110), rect, 1)
+
+        # Image placeholder box at top
+        img_h = int(rect.height * 0.30)
+        img_rect = pygame.Rect(rect.x + 10, rect.y + 10, rect.width - 20, img_h)
+        pygame.draw.rect(self.screen, (18, 18, 35), img_rect)
+        pygame.draw.rect(self.screen, (100, 100, 140), img_rect, 1)
+
+        if self.focus_body and self.focus_body.image:
+            cap_text = f"image: {self.focus_body.image}"
+        else:
+            cap_text = "no image linked yet"
+        cap = self.small_font.render(cap_text, True, (180, 180, 200))
+        self.screen.blit(cap, (img_rect.x + 6, img_rect.y + 6))
+
+        # Text info below image
+        b = self.focus_body
         lines: List[str] = []
         lines.append(f"System: {self.system.name}")
         lines.append(
-            f"View: {self.view_mode:<3}   Scope: {self.scope_mode:<6}   speed x{self.time_scale:.3f}"
+            f"View: {self.view_mode:<3}   Scope: {self.scope_mode:<6}   x{self.time_scale:.3f}"
         )
         lines.append(f"Sim time: {self.sim_time_years:8.3f} years")
 
-        b = self.focus_body
         if b:
             lines.append(f"Focus: {b.name}  [{b.type}]")
-
             if b.a_au > 0:
                 period = b.period_years
                 a_km = b.a_au * AU_IN_KM
@@ -577,31 +594,16 @@ class OrbitSandbox:
                 ship_days = ship_time_sec / 86400.0
                 lines.append(f"a = {b.a_au:.3f} AU   T = {period:.3f} years")
                 lines.append(
-                    f"Orbit length ~ {circumference:,.0f} km; "
-                    f"{ship_days:,.1f} days @ {SHIP_SPEED_KM_S:.0f} km/s"
+                    f"Orbit ~ {circumference:,.0f} km; {ship_days:,.1f} d @ {SHIP_SPEED_KM_S:.0f} km/s"
                 )
-
-                # Distance from center in light-minutes
-                light_seconds = a_km / SPEED_OF_LIGHT_KM_S
-                light_minutes = light_seconds / 60.0
-                lines.append(f"Distance from center ≈ {light_minutes:.1f} light-minutes")
-
-                # Straight-line travel times at 0.1c and 0.01c
-                for frac in (0.1, 0.01):
-                    v = SPEED_OF_LIGHT_KM_S * frac
-                    t_sec = a_km / v
-                    t_days = t_sec / 86400.0
-                    lines.append(f"Straight-line @ {frac:.0%} c: {t_days:.2f} days")
             else:
                 lines.append("a = 0 (central body)")
 
-            # Mini-wiki metadata
+            # Meta / wiki-style info
             meta = b.meta or {}
             g = meta.get("gravity_g")
-            radius_meta = meta.get("radius_km")
-            radius = radius_meta if radius_meta is not None else (b.radius_km or None)
+            radius = meta.get("radius_km") or b.radius_km or None
             pop = meta.get("population") or meta.get("population_estimate")
-
             stats_bits = []
             if g is not None:
                 stats_bits.append(f"g ≈ {g}")
@@ -637,13 +639,12 @@ class OrbitSandbox:
             if desc:
                 lines.append(desc)
 
-        # Render
-        x = 10
-        y = 10
-        for line in lines[:14]:
+        text_x = rect.x + 12
+        text_y = img_rect.bottom + 10
+        for line in lines[:12]:
             txt = self.font.render(line, True, (220, 220, 220))
-            self.screen.blit(txt, (x, y))
-            y += txt.get_height() + 2
+            self.screen.blit(txt, (text_x, text_y))
+            text_y += txt.get_height() + 2
 
     def draw_help_overlay(self):
         help_lines = [

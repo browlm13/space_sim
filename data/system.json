@@ -6,13 +6,12 @@
       "id": "rr_bary",
       "name": "RR Barycenter",
       "type": "barycenter",
-      "parent": null,
       "a": 0.0,
       "radius": 0,
-      "visual_size": 4,
+      "visual_size": 3,
       "color": "#ffffff",
       "meta": {
-        "short_description": "Center of mass for the Romulus–Remus binary."
+        "short_description": "Dynamical center of the Romulus–Remus close binary."
       }
     },
 
@@ -21,14 +20,13 @@
       "name": "Romulus",
       "type": "star",
       "parent": "rr_bary",
-      "a": 0.05,
-      "radius": 700000,
-      "visual_size": 12,
-      "color": "#ffddaa",
-      "period_years": 0.30,
-      "phase_deg": 0,
+      "a": 0.03,
+      "period_years": 0.3,
+      "radius": 500000,
+      "visual_size": 10,
+      "color": "#ffd4a3",
       "meta": {
-        "short_description": "Warm golden primary in the RR pair."
+        "short_description": "Warm G-type primary star of the RR pair."
       }
     },
     {
@@ -37,13 +35,12 @@
       "type": "star",
       "parent": "rr_bary",
       "a": 0.05,
-      "radius": 650000,
-      "visual_size": 11,
-      "color": "#ffd4c0",
-      "period_years": 0.30,
-      "phase_deg": 180,
+      "period_years": 0.3,
+      "radius": 400000,
+      "visual_size": 8,
+      "color": "#ffe6c4",
       "meta": {
-        "short_description": "Slightly cooler companion to Romulus."
+        "short_description": "Slightly cooler companion star to Romulus."
       }
     },
 
@@ -53,37 +50,16 @@
       "type": "planet",
       "parent": "rr_bary",
       "a": 0.25,
-      "radius": 4000,
-      "visual_size": 5,
-      "color": "#d56f3f",
+      "radius": 3000,
+      "visual_size": 4,
+      "color": "#b34747",
       "meta": {
-        "gravity_g": 0.6,
-        "radius_km": 4000,
-        "population": "1.2e7",
-        "atmosphere": "thin, toxic",
-        "climate": "superheated, volcanic",
-        "primary_species": ["Humans"],
-        "short_description": "Inner, hot, tectonically abused world dominated by mining enclaves."
-      }
-    },
-
-    {
-      "id": "allure",
-      "name": "Allure",
-      "type": "planet",
-      "parent": "rr_bary",
-      "a": 0.55,
-      "radius": 6200,
-      "visual_size": 6,
-      "color": "#ff9fd2",
-      "meta": {
-        "gravity_g": 0.95,
-        "radius_km": 6200,
-        "population": "5.0e8",
-        "atmosphere": "dense, humid, oxygen-rich",
-        "climate": "warm, cloud-wrapped, stormy coasts",
-        "primary_species": ["Humans", "Allurans"],
-        "short_description": "Ocean-heavy world famed for resort cities and strange bioluminescent seas."
+        "gravity_g": 0.4,
+        "radius_km": 3000,
+        "atmosphere": "thin CO2, dust-laden",
+        "climate": "searing dayside, frozen nightside",
+        "primary_species": [],
+        "short_description": "Airless, tidally roasted inner world littered with early mining ruins."
       }
     },
 
@@ -92,77 +68,58 @@
       "name": "Gaia",
       "type": "planet",
       "parent": "rr_bary",
-      "a": 0.80,
-      "radius": 6400,
-      "visual_size": 7,
-      "color": "#4ea3ff",
+      "a": 0.75,
+      "radius": 6500,
+      "visual_size": 5,
+      "color": "#4fa87b",
       "meta": {
-        "gravity_g": 1.02,
-        "radius_km": 6400,
-        "population": "3.4e9",
-        "atmosphere": "temperate nitrogen/oxygen",
-        "climate": "diverse, blue-green",
+        "gravity_g": 1.0,
+        "radius_km": 6500,
+        "population": "1.5e10",
+        "atmosphere": "N2/O2, dense urban aerosols",
+        "climate": "tempered by active geoengineering",
         "primary_species": ["Humans"],
-        "short_description": "Primary cradle of RR culture and early interstellar expansion."
+        "short_description": "Core cradle of the RR system, wrapped in megacities and orbital shells."
+      }
+    },
+
+    {
+      "id": "allure",
+      "name": "Allure",
+      "type": "planet",
+      "parent": "rr_bary",
+      "a": 1.10,
+      "radius": 7000,
+      "visual_size": 5,
+      "color": "#6fc7ff",
+      "meta": {
+        "gravity_g": 1.1,
+        "radius_km": 7000,
+        "population": "3.2e9",
+        "atmosphere": "moist N2/O2, high cloud cover",
+        "climate": "warm oceans with scattered archipelagos",
+        "primary_species": ["Humans", "Augment variants"],
+        "short_description": "Ocean-heavy resort world turned quiet diplomatic retreat."
       }
     },
 
     {
       "id": "eden",
       "name": "Eden",
-      "type": "planet",
-      "parent": "rr_bary",
-      "a": 1.20,
-      "radius": 6800,
-      "visual_size": 7,
-      "color": "#7dff9a",
-      "meta": {
-        "gravity_g": 1.08,
-        "radius_km": 6800,
-        "population": "8.0e8",
-        "atmosphere": "thick, bio-rich",
-        "climate": "lush, high rainfall, megaflora",
-        "primary_species": ["Humans", "Post-humans"],
-        "short_description": "Garden world with engineered biospheres and experimental cultures."
-      }
-    },
-
-    {
-      "id": "eden_moon_1",
-      "name": "Eden Alpha",
       "type": "moon",
-      "parent": "eden",
-      "a": 0.02,
-      "radius": 1800,
+      "parent": "allure",
+      "a": 0.03,
+      "radius": 6500,
       "visual_size": 4,
-      "color": "#cccccc",
+      "color": "#88ff88",
       "meta": {
-        "gravity_g": 0.2,
-        "radius_km": 1800,
-        "population": "2.0e6",
-        "atmosphere": "none (domed habitats)",
-        "climate": "artificial",
+        "gravity_g": 0.9,
+        "radius_km": 6500,
+        "population": "8.0e9",
+        "atmosphere": "clean N2/O2, tightly regulated",
+        "climate": "mild, controlled seasons",
         "primary_species": ["Humans"],
-        "short_description": "Primary orbital logistics and shipyard hub for Eden."
-      }
-    },
-    {
-      "id": "eden_moon_2",
-      "name": "Eden Beta",
-      "type": "moon",
-      "parent": "eden",
-      "a": 0.035,
-      "radius": 1500,
-      "visual_size": 4,
-      "color": "#bbbbbb",
-      "meta": {
-        "gravity_g": 0.18,
-        "radius_km": 1500,
-        "population": "3.5e5",
-        "atmosphere": "trace (industrial haze)",
-        "climate": "cold, airless",
-        "primary_species": ["Humans"],
-        "short_description": "Heavily industrial moon wrapped in radiators and launch towers."
+        "short_description": "Lush, nearly twin-sized moon of Allure, treated culturally as a sister world."
       }
     },
 
@@ -171,32 +128,14 @@
       "name": "Colossus",
       "type": "gas_giant",
       "parent": "rr_bary",
-      "a": 1.80,
+      "a": 2.2,
       "radius": 60000,
-      "visual_size": 10,
-      "color": "#f1c46a",
+      "visual_size": 7,
+      "color": "#d0c27f",
       "meta": {
         "gravity_g": 2.5,
         "radius_km": 60000,
-        "population": "1.0e7 (orbital)",
-        "atmosphere": "H/He with golden ammonia clouds",
-        "climate": "deep, turbulent bands",
-        "primary_species": ["Humans"],
-        "short_description": "Massive golden giant straddling the warm outer band."
-      }
-    },
-
-    {
-      "id": "belt_main",
-      "name": "Main Belt",
-      "type": "belt",
-      "parent": "rr_bary",
-      "a": 2.40,
-      "radius": 0,
-      "visual_size": 0,
-      "color": "#666666",
-      "meta": {
-        "short_description": "Sparse asteroid belt, mined and threaded with small habitats."
+        "short_description": "Pale, banded giant heavy with refineries and skyhooks."
       }
     },
 
@@ -205,67 +144,81 @@
       "name": "Prosperity",
       "type": "gas_giant",
       "parent": "rr_bary",
-      "a": 3.20,
+      "a": 3.5,
       "radius": 55000,
-      "visual_size": 10,
+      "visual_size": 8,
       "color": "#c48cff",
       "meta": {
-        "gravity_g": 2.3,
+        "gravity_g": 2.1,
         "radius_km": 55000,
-        "population": "2.5e8 (rings and moons)",
-        "atmosphere": "H/He with lavender tints",
-        "climate": "layered cloud decks, strong jet streams",
-        "primary_species": ["Humans", "Ring-adapted offshoots"],
-        "short_description": "Ring-laced lavender giant with a crowded moon system and dense trade."
+        "population": "2.5e8 (orbital habitats)",
+        "atmosphere": "H/He with methane and exotic hazes",
+        "climate": "upper cloud decks temperate",
+        "primary_species": ["Humans", "Ringborn"],
+        "short_description": "Lavender gas giant encircled by dense industrial rings and habitats."
       }
     },
 
     {
-      "id": "pros_moon_1",
-      "name": "S1",
+      "id": "belt_main",
+      "name": "Main Belt",
+      "type": "belt",
+      "parent": "rr_bary",
+      "a": 2.8,
+      "radius": 0,
+      "visual_size": 1,
+      "color": "#777777",
+      "meta": {
+        "short_description": "Broad, resource-rich asteroid belt between Colossus and Prosperity."
+      }
+    },
+
+    {
+      "id": "prosperity_moon_1",
+      "name": "Crown",
       "type": "moon",
       "parent": "prosperity",
-      "a": 0.02,
-      "radius": 1500,
-      "visual_size": 4,
-      "color": "#aaaaaa",
+      "a": 0.03,
+      "radius": 2500,
+      "visual_size": 3,
+      "color": "#f0e0c0",
       "meta": {
-        "gravity_g": 0.18,
-        "radius_km": 1500,
-        "population": "1.0e6",
-        "short_description": "Inner icy moon with subsurface oceans and research domes."
+        "gravity_g": 0.3,
+        "radius_km": 2500,
+        "population": "7.0e7",
+        "short_description": "Trade hub moon sitting atop Prosperity's densest ring traffic lanes."
       }
     },
     {
-      "id": "pros_moon_2",
-      "name": "S2",
+      "id": "prosperity_moon_2",
+      "name": "Ledger",
       "type": "moon",
       "parent": "prosperity",
-      "a": 0.035,
+      "a": 0.045,
       "radius": 2200,
-      "visual_size": 4,
-      "color": "#cccccc",
+      "visual_size": 3,
+      "color": "#d0ffc0",
       "meta": {
-        "gravity_g": 0.22,
+        "gravity_g": 0.25,
         "radius_km": 2200,
-        "population": "4.0e6",
-        "short_description": "Heavily populated transfer hub with beanstalks into the ring plane."
+        "population": "4.5e7",
+        "short_description": "Banking and arbitration moon where inter-system contracts are settled."
       }
     },
     {
-      "id": "pros_moon_3",
-      "name": "S3",
+      "id": "prosperity_moon_3",
+      "name": "Forge",
       "type": "moon",
       "parent": "prosperity",
-      "a": 0.055,
-      "radius": 2600,
-      "visual_size": 4,
-      "color": "#ccbbaa",
+      "a": 0.06,
+      "radius": 2300,
+      "visual_size": 3,
+      "color": "#ffb070",
       "meta": {
-        "gravity_g": 0.26,
-        "radius_km": 2600,
-        "population": "6.0e6",
-        "short_description": "Administrative and cultural heart of the Prosperity system's moons."
+        "gravity_g": 0.27,
+        "radius_km": 2300,
+        "population": "6.0e7",
+        "short_description": "Heavily industrialized moon feeding alloys and volatiles into the ring habitats."
       }
     }
   ]
