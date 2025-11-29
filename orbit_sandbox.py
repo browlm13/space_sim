@@ -12,12 +12,17 @@ Features
 - Animate circular orbits using Kepler-style T ~ a^(3/2).
 - Hierarchical orbits: barycenter -> stars -> planets -> moons.
 - Top-down AND isometric view modes (toggle with V).
-- System view always visible.
-- Optional moon-system mini panel for focused body with moons (toggle with M).
+- Always-visible system view.
+- Optional moon-system mini panel for focused body with moons (M).
 - Time scale automatically tied to the focused body's orbital period
   (by default 1 orbit ≈ BASE_ORBIT_SECONDS at speed x1).
 - Time controls, zoom, focus, click-to-focus (bodies + orbits).
+- Mouse-based measurement mode:
+    - Press D to toggle measure mode.
+    - In measure mode, first click selects origin body, second and later clicks select target.
+    - Draws a line between origin and target and shows distance + travel times in sidebar.
 - Right-hand wiki sidebar with orbit stats + gravity, population, atmosphere, species, etc.
+  (moons get full wiki too, since they are just bodies with their own meta).
 
 Usage
 -----
@@ -268,7 +273,7 @@ class OrbitSandbox:
 
         # Projection: "top" or "iso"
         self.view_mode = "top"
-        # Scope: "system" (no moon panel) or "local" (show moon panel)
+        # Scope: "system" or "local" (local = show moon mini panel)
         self.scope_mode = "system"
 
         # scaling: base pixels per AU (before zoom)
@@ -287,6 +292,11 @@ class OrbitSandbox:
         self.focus_body: Optional[Body] = (
             self.focusables[self.focus_index] if self.focus_index >= 0 else None
         )
+
+        # measurement state
+        self.measure_active = False
+        self.measure_origin: Optional[Body] = None
+        self.measure_target: Optional[Body] = None
 
         # initialize time scale based on initial focus
         self.recalc_time_scale()
@@ -428,7 +438,7 @@ class OrbitSandbox:
         if key == pygame.K_v:
             self.view_mode = "iso" if self.view_mode == "top" else "top"
 
-        # Scope toggle: show/hide moon mini panel
+        # Scope toggle: moon mini panel on/off
         if key == pygame.K_m:
             if self.scope_mode == "system":
                 if self.focus_body and self.focus_body.children:
@@ -436,10 +446,18 @@ class OrbitSandbox:
             else:
                 self.scope_mode = "system"
 
+        # Measurement mode toggle
+        if key == pygame.K_d:
+            self.measure_active = not self.measure_active
+            if not self.measure_active:
+                self.measure_origin = None
+                self.measure_target = None
+
     def handle_click(self, pos):
         """Click selection with:
         - big radius around body
         - orbit rings clickable too
+        - in measure mode: first click = origin, second+ = target
         """
         mx, my = pos
         cam_x, cam_y = self.camera_center()
@@ -475,15 +493,28 @@ class OrbitSandbox:
                 orbit_radius = b.a_au * scale
                 if orbit_radius > 4:
                     diff = abs(dist_center - orbit_radius)
-                    # within 10 px of the orbit ring
                     if diff < 10 and diff < best_orbit_score:
                         best_orbit_score = diff
                         best_orbit_body = b
 
-        if best_dot_body is not None:
-            self.set_focus(best_dot_body)
-        elif best_orbit_body is not None:
-            self.set_focus(best_orbit_body)
+        clicked_body = best_dot_body or best_orbit_body
+        if clicked_body is None:
+            return
+
+        # Focus always follows click
+        self.set_focus(clicked_body)
+
+        # Measurement selection (if active)
+        if self.measure_active:
+            if self.measure_origin is None:
+                self.measure_origin = clicked_body
+                self.measure_target = None
+            else:
+                # if you click the same body, treat as new origin
+                if clicked_body is self.measure_origin:
+                    self.measure_target = None
+                else:
+                    self.measure_target = clicked_body
 
     def cycle_focus(self, direction: int):
         if not self.focusables:
@@ -571,6 +602,20 @@ class OrbitSandbox:
                     self.screen, (255, 255, 255), (int(sx), int(sy)), size + 4, 1
                 )
 
+        # Measurement line (draw after bodies so it's on top)
+        if self.measure_active and self.measure_origin and self.measure_target:
+            o = self.measure_origin
+            t = self.measure_target
+            ox, oy = self.project_world(o.pos[0], o.pos[1], cam_x, cam_y, scale)
+            tx, ty = self.project_world(t.pos[0], t.pos[1], cam_x, cam_y, scale)
+            pygame.draw.line(
+                self.screen,
+                (120, 220, 255),
+                (int(ox), int(oy)),
+                (int(tx), int(ty)),
+                2,
+            )
+
     def draw_moon_panel(self, center_body: Body):
         """Mini-sim showing the focused body's moons in their own frame."""
         moons = [m for m in center_body.children if not m.is_belt()]
@@ -624,7 +669,8 @@ class OrbitSandbox:
         lines: List[str] = []
 
         lines.append(f"System: {self.system.name}")
-        lines.append(f"View: {self.view_mode:<3}   Scope: {self.scope_mode:<6}")
+        measure_flag = "on" if self.measure_active else "off"
+        lines.append(f"View: {self.view_mode:<3}   Scope: {self.scope_mode:<6}   Measure: {measure_flag}")
         lines.append(f"Speed x{self.speed_multiplier:.3f}")
 
         b = self.focus_body
@@ -714,9 +760,50 @@ class OrbitSandbox:
                 lines.append("")
                 lines.append(desc)
 
+        # Measurement block (origin → target)
+        if (
+            self.measure_active
+            and self.measure_origin is not None
+            and self.measure_target is not None
+            and self.measure_origin is not self.measure_target
+        ):
+            o = self.measure_origin
+            t = self.measure_target
+            dx = (t.pos[0] - o.pos[0])
+            dy = (t.pos[1] - o.pos[1])
+            dist_au = math.hypot(dx, dy)
+            dist_km = dist_au * AU_IN_KM
+
+            lines.append("")
+            lines.append(f"Measure: {o.name} → {t.name}")
+            lines.append(f"d ≈ {dist_au:.3f} AU (~{dist_km:,.0f} km)")
+
+            light_seconds = dist_km / SPEED_OF_LIGHT_KM_S if dist_km > 0 else 0.0
+            if light_seconds > 0:
+                if light_seconds < 60:
+                    lines.append(f"light-time ≈ {light_seconds:.1f} s")
+                elif light_seconds < 3600:
+                    lines.append(f"light-time ≈ {light_seconds/60.0:.1f} min")
+                elif light_seconds < 86400:
+                    lines.append(f"light-time ≈ {light_seconds/3600.0:.1f} h")
+                else:
+                    lines.append(f"light-time ≈ {light_seconds/86400.0:.2f} d")
+
+            for frac in (0.1, 0.01):
+                v = SPEED_OF_LIGHT_KM_S * frac
+                if dist_km > 0:
+                    t_sec = dist_km / v
+                    t_days = t_sec / 86400.0
+                    lines.append(f"@{frac:.0%} c: {t_days:.2f} d")
+
+            if dist_km > 0:
+                t_ship_sec = dist_km / SHIP_SPEED_KM_S
+                t_ship_years = t_ship_sec / (86400.0 * 365.25)
+                lines.append(f"@{SHIP_SPEED_KM_S:.0f} km/s: {t_ship_years:.2f} yr")
+
         x = rect.x + 10
         y = rect.y + 10
-        for line in lines[:20]:
+        for line in lines[:24]:
             txt = self.font.render(line, True, (220, 220, 220))
             self.screen.blit(txt, (x, y))
             y += txt.get_height() + 2
@@ -724,7 +811,7 @@ class OrbitSandbox:
     def draw_help_overlay(self):
         help_lines = [
             "SPACE: play/pause   [ / ]: slower/faster (relative to orbit)   +/- or wheel: zoom   0: reset zoom",
-            "TAB / Shift+TAB / ↑↓: cycle focus   Click: body or orbit   M: toggle moon panel   1: belts  2: moons  3: dwarfs   V: top/iso",
+            "TAB / Shift+TAB / ↑↓: cycle focus   Click: body or orbit   M: toggle moon panel   1: belts  2: moons  3: dwarfs   V: top/iso   D: measure mode",
         ]
         y = self.height - 40
         for line in help_lines:
