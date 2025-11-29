@@ -2,25 +2,30 @@
 """
 orbit_sandbox.py
 
-Sandbox orbit viewer for fictional systems.
+Fictional-system orbit sandbox.
 
-Features
---------
-- Load either:
-    * a system JSON: { "id": "...", "name": "...", "bodies": [...] }
-    * a universe JSON: { "systems": [ { "id": "...", "bodies_file": "...", ... } ] }
-- Circular Kepler-ish orbits (T ~ a^(3/2)).
-- Hierarchy: barycenter -> stars -> planets -> moons.
-- Top-down or isometric view (V).
-- Zoom (mouse wheel / +/-).
-- Pan with left-drag (when not in measure mode).
-- Measurement tool:
-    * Press D to toggle measure mode.
-    * In measure mode, left-drag draws a line anywhere in space.
-    * Press C to clear measurement.
-- Big hitboxes for selecting bodies (planets/moons/orbits).
-- Moon mini-panel for focused body with moons (M).
-- Right-hand wiki sidebar for the focused body (planets AND moons).
+Core features
+-------------
+- Top-down / isometric views (V).
+- System view + optional moon mini-panel (M) for focused body.
+- Wiki sidebar: meta for ANY focused body (star, planet, moon, station, etc.).
+- Orbit-relative time scaling:
+    * Focus a body (planet or moon) -> simulation speed is scaled so
+      that its orbital period ~ BASE_ORBIT_SECONDS at speed x1.
+- Big hitboxes for selecting bodies (dots OR orbit rings).
+- SIMPLE interactions:
+    * Normal mode (measure OFF):
+        - Left-click: select/focus body or orbit.
+        - Left-drag: pan camera.
+    * Measure mode (D toggles):
+        - Left-click+drag: draw a distance segment anywhere in space.
+- NEW:
+    * Moons in the moon mini-panel are clickable:
+        - clicking a moon selects it (wiki + orbit info).
+        - clicking near the central globe selects the planet.
+    * Camera follow mode (F):
+        - When ON, camera stays locked to the focused body’s orbit.
+        - When OFF, panning is manual.
 
 Usage
 -----
@@ -78,7 +83,7 @@ class Body:
         self.parent: Optional["Body"] = None
         self.children: List["Body"] = []
 
-        # Orbit
+        # Orbital parameters
         self.a_au: float = float(raw.get("a", 0.0))
         self.e: float = float(raw.get("e", 0.0))
         self.inclination_deg: float = float(raw.get("inclination", 0.0))
@@ -88,7 +93,7 @@ class Body:
         self.visual_size: int = int(raw.get("visual_size", 4))
         self.color: Tuple[int, int, int] = hex_to_rgb(raw.get("color", "#ffffff"))
 
-        # Period (years)
+        # Orbital period (years) – Kepler-ish if missing
         period = raw.get("period_years")
         if period is None and self.a_au > 0:
             self.period_years: float = self.a_au ** 1.5
@@ -107,12 +112,12 @@ class Body:
             2.0 * math.pi / self.period_years if self.period_years > 0 else 0.0
         )
 
-        # Lore
+        # Lore/meta
         self.tags: List[str] = raw.get("tags", [])
         self.image: Optional[str] = raw.get("image")
         self.meta: dict = raw.get("meta", {})
 
-        # World position (AU)
+        # Position in world space (AU)
         self.pos: Tuple[float, float] = (0.0, 0.0)
 
     def is_root(self) -> bool:
@@ -140,7 +145,7 @@ class SystemModel:
             b = Body(raw, system_id)
             self.bodies[b.id] = b
 
-        # Link parents/children
+        # link parents/children
         for b in self.bodies.values():
             if b.parent_id:
                 parent = self.bodies.get(b.parent_id)
@@ -176,7 +181,8 @@ class SystemModel:
 
     def ordered_focusable_bodies(self) -> List[Body]:
         focusables = [
-            b for b in self.bodies.values() if not b.is_belt() and b.type != "barycenter"
+            b for b in self.bodies.values()
+            if not b.is_belt() and b.type != "barycenter"
         ]
         focusables.sort(key=lambda b: (b.type not in ("star", "primary_star"), b.a_au))
         return focusables
@@ -244,49 +250,69 @@ class OrbitSandbox:
         self.sim_time_years = 0.0
         self.running = True
 
+        # Orbit-relative time scale
         self.base_time_scale = 1.0
         self.speed_multiplier = 1.0
         self.time_scale = 1.0
 
-        self.view_mode = "top"
-        self.scope_mode = "system"
+        # Views
+        self.view_mode = "top"      # "top" or "iso"
+        self.scope_mode = "system"  # "system" or "local"
 
+        # Camera center (world coords, AU)
         self.cam_x = 0.0
         self.cam_y = 0.0
+        self.follow_focus = False   # F toggles camera follow
 
+        # Zoom
         self.base_pixels_per_au = 0.44 * min(self.width, self.height) / system.max_a_au
         self.zoom = 1.0
 
+        # Fonts
         self.font = pygame.font.SysFont("consolas", 16)
         self.small_font = pygame.font.SysFont("consolas", 13)
 
+        # Visibility toggles
         self.show_belts = True
         self.show_moons = True
         self.show_dwarfs = True
 
+        # Focus list
         self.focusables = system.ordered_focusable_bodies()
         self.focus_index = 0 if self.focusables else -1
         self.focus_body: Optional[Body] = (
             self.focusables[self.focus_index] if self.focus_index >= 0 else None
         )
 
-        # Drag + pan
-        self.left_dragging = False
-        self.drag_start_mouse: Tuple[int, int] = (0, 0)
-        self.drag_start_cam: Tuple[float, float] = (0.0, 0.0)
+        if self.focus_body:
+            self.cam_x, self.cam_y = self.focus_body.pos
+
+        # Drag / pan (left button)
+        self.left_down = False
+        self.left_down_pos: Tuple[int, int] = (0, 0)
+        self.pan_active = False
+        self.pan_anchor_world: Optional[Tuple[float, float]] = None
+        self.drag_threshold_px = 5  # <= this = click, > this = pan
 
         # Measurement
-        self.measure_mode: bool = False
-        self.measure_dragging: bool = False
+        self.measure_mode = False
+        self.measure_dragging = False
         self.measure_start_world: Optional[Tuple[float, float]] = None
         self.measure_end_world: Optional[Tuple[float, float]] = None
 
+        # Moon panel hit detection
+        self.moon_panel_rect: Optional[pygame.Rect] = None
+        self.moon_panel_center: Optional[Tuple[int, int]] = None
+        self.moon_panel_scale: float = 1.0
+        self.moon_panel_parent: Optional[Body] = None
+        self.moon_panel_moons: List[Body] = []
+
         self.recalc_time_scale()
-        self.center_camera_on_focus()
 
     # --- time scaling ---
 
     def recalc_time_scale(self):
+        """Set time_scale so focused body's orbit ~ BASE_ORBIT_SECONDS at speed x1."""
         b = self.focus_body
         if b and b.period_years > 0:
             self.base_time_scale = b.period_years / BASE_ORBIT_SECONDS
@@ -296,20 +322,15 @@ class OrbitSandbox:
 
     # --- camera helpers ---
 
-    def center_camera_on_focus(self):
-        if self.focus_body:
-            self.cam_x, self.cam_y = self.focus_body.pos
-        else:
-            self.cam_x, self.cam_y = (0.0, 0.0)
-
     def camera_center(self) -> Tuple[float, float]:
         return self.cam_x, self.cam_y
 
     # --- transforms ---
 
     def world_to_screen(self, wx: float, wy: float, scale: float) -> Tuple[float, float]:
-        dx = wx - self.cam_x
-        dy = wy - self.cam_y
+        cam_x, cam_y = self.camera_center()
+        dx = wx - cam_x
+        dy = wy - cam_y
 
         if self.view_mode == "top":
             sx = self.width / 2 + dx * scale
@@ -323,14 +344,10 @@ class OrbitSandbox:
         return sx, sy
 
     def screen_to_world(self, sx: float, sy: float, scale: float) -> Tuple[float, float]:
-        if scale <= 0:
-            return self.cam_x, self.cam_y
-
+        cam_x, cam_y = self.camera_center()
         if self.view_mode == "top":
             dx = (sx - self.width / 2) / scale
             dy = (sy - self.height / 2) / scale
-            wx = self.cam_x + dx
-            wy = self.cam_y + dy
         else:
             X = (sx - self.width / 2) / scale
             Y = (sy - self.height / 2) / scale
@@ -338,10 +355,30 @@ class OrbitSandbox:
             dx_plus_dy = Y / 0.40
             dx = (dx_minus_dy + dx_plus_dy) / 2.0
             dy = (dx_plus_dy - dx_minus_dy) / 2.0
-            wx = self.cam_x + dx
-            wy = self.cam_y + dy
-
+        wx = cam_x + dx
+        wy = cam_y + dy
         return wx, wy
+
+    def draw_orbit_for_body(self, b: Body, scale: float, color):
+        parent = b.parent
+        if not parent:
+            return
+        if self.view_mode == "top":
+            cx, cy = self.world_to_screen(parent.pos[0], parent.pos[1], scale)
+            r = max(1, int(b.a_au * scale))
+            if r > 1:
+                pygame.draw.circle(self.screen, color, (int(cx), int(cy)), r, 1)
+        else:
+            steps = 72
+            pts = []
+            for i in range(steps + 1):
+                theta = 2.0 * math.pi * i / steps
+                wx = parent.pos[0] + b.a_au * math.cos(theta)
+                wy = parent.pos[1] + b.a_au * math.sin(theta)
+                sx, sy = self.world_to_screen(wx, wy, scale)
+                pts.append((int(sx), int(sy)))
+            if len(pts) > 1:
+                pygame.draw.lines(self.screen, color, False, pts, 1)
 
     # --- main loop ---
 
@@ -353,9 +390,12 @@ class OrbitSandbox:
                 dt_years = dt_real * self.time_scale
                 self.sim_time_years += dt_years
                 self.system.update(dt_years)
+                if self.follow_focus and self.focus_body:
+                    # Lock camera to focused body's orbit
+                    self.cam_x, self.cam_y = self.focus_body.pos
             self.draw()
 
-    # --- events ---
+    # --- event handling ---
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -386,22 +426,25 @@ class OrbitSandbox:
         if key == pygame.K_SPACE:
             self.running = not self.running
 
+        # focus movement
         if key == pygame.K_UP:
             self.cycle_focus(1)
         if key == pygame.K_DOWN:
             self.cycle_focus(-1)
 
+        # zoom
         if key in (pygame.K_EQUALS, pygame.K_PLUS, pygame.K_KP_PLUS):
             self.zoom *= 1.1
         if key in (pygame.K_MINUS, pygame.K_UNDERSCORE, pygame.K_KP_MINUS):
             self.zoom /= 1.1
         self.zoom = max(0.1, min(self.zoom, 10.0))
 
-        if key == pygame.K_RIGHTBRACKET:
+        # time scale multiplier (global)
+        if key == pygame.K_RIGHTBRACKET:  # ]
             self.speed_multiplier *= 2.0
             self.speed_multiplier = min(self.speed_multiplier, 128.0)
             self.recalc_time_scale()
-        if key == pygame.K_LEFTBRACKET:
+        if key == pygame.K_LEFTBRACKET:  # [
             self.speed_multiplier /= 2.0
             self.speed_multiplier = max(self.speed_multiplier, 1.0 / 128.0)
             self.recalc_time_scale()
@@ -409,12 +452,18 @@ class OrbitSandbox:
         if key == pygame.K_0:
             self.zoom = 1.0
 
+        # Recenter on focus
+        if key == pygame.K_c and self.focus_body:
+            self.cam_x, self.cam_y = self.focus_body.pos
+
+        # Focus cycling
         if key == pygame.K_TAB:
             if pygame.key.get_mods() & pygame.KMOD_SHIFT:
                 self.cycle_focus(-1)
             else:
                 self.cycle_focus(1)
 
+        # Toggles
         if key == pygame.K_1:
             self.show_belts = not self.show_belts
         if key == pygame.K_2:
@@ -422,24 +471,28 @@ class OrbitSandbox:
         if key == pygame.K_3:
             self.show_dwarfs = not self.show_dwarfs
 
+        # View mode
         if key == pygame.K_v:
             self.view_mode = "iso" if self.view_mode == "top" else "top"
 
+        # Scope mode (moon panel on/off)
         if key == pygame.K_m:
-            self.scope_mode = "local" if self.scope_mode == "system" else "system"
+            if self.scope_mode == "system":
+                if self.focus_body and self.focus_body.children:
+                    self.scope_mode = "local"
+            else:
+                self.scope_mode = "system"
 
-        # Measure mode toggle
+        # Measure mode (D)
         if key == pygame.K_d:
             self.measure_mode = not self.measure_mode
             self.measure_dragging = False
             self.measure_start_world = None
             self.measure_end_world = None
 
-        # Clear measurement
-        if key == pygame.K_c:
-            self.measure_dragging = False
-            self.measure_start_world = None
-            self.measure_end_world = None
+        # Follow focus (F)
+        if key == pygame.K_f:
+            self.follow_focus = not self.follow_focus
 
     # --- mouse handlers ---
 
@@ -447,16 +500,20 @@ class OrbitSandbox:
         mx, my = pos
         scale = self.base_pixels_per_au * self.zoom
 
+        self.left_down = True
+        self.left_down_pos = (mx, my)
+        self.pan_active = False
+
         if self.measure_mode:
-            # start measurement drag
+            # Start measurement drag
+            wx, wy = self.screen_to_world(mx, my, scale)
+            self.measure_start_world = (wx, wy)
+            self.measure_end_world = (wx, wy)
             self.measure_dragging = True
-            self.measure_start_world = self.screen_to_world(mx, my, scale)
-            self.measure_end_world = self.measure_start_world
         else:
-            # start pan / maybe-click
-            self.left_dragging = True
-            self.drag_start_mouse = (mx, my)
-            self.drag_start_cam = (self.cam_x, self.cam_y)
+            # Potential click or pan; record world anchor
+            wx, wy = self.screen_to_world(mx, my, scale)
+            self.pan_anchor_world = (wx, wy)
 
     def handle_left_up(self, pos):
         mx, my = pos
@@ -464,47 +521,85 @@ class OrbitSandbox:
 
         if self.measure_mode:
             if self.measure_dragging:
-                self.measure_end_world = self.screen_to_world(mx, my, scale)
+                wx, wy = self.screen_to_world(mx, my, scale)
+                self.measure_end_world = (wx, wy)
                 self.measure_dragging = False
         else:
-            if not self.left_dragging:
-                return
-            dx = mx - self.drag_start_mouse[0]
-            dy = my - self.drag_start_mouse[1]
-            dist2 = dx * dx + dy * dy
-            threshold2 = 5 * 5
-            if dist2 <= threshold2:
-                # treat as click to focus
-                self.handle_focus_click(mx, my)
-            self.left_dragging = False
+            # If we didn't pan, treat as click
+            dx = mx - self.left_down_pos[0]
+            dy = my - self.left_down_pos[1]
+            if not self.pan_active and (dx * dx + dy * dy) <= self.drag_threshold_px ** 2:
+                self.handle_click(mx, my)
+
+        self.left_down = False
+        self.pan_active = False
 
     def handle_mouse_motion(self, pos):
         mx, my = pos
         scale = self.base_pixels_per_au * self.zoom
 
+        # Measurement drag always honored, even if following
         if self.measure_mode and self.measure_dragging:
-            self.measure_end_world = self.screen_to_world(mx, my, scale)
-        elif self.left_dragging:
-            dx = mx - self.drag_start_mouse[0]
-            dy = my - self.drag_start_mouse[1]
-            # pan camera
-            if self.view_mode == "top":
-                self.cam_x = self.drag_start_cam[0] - dx / scale
-                self.cam_y = self.drag_start_cam[1] - dy / scale
-            else:
-                X = dx / scale
-                Y = dy / scale
-                dx_minus_dy = X / 0.75
-                dx_plus_dy = Y / 0.40
-                world_dx = (dx_minus_dy + dx_plus_dy) / 2.0
-                world_dy = (dx_plus_dy - dx_minus_dy) / 2.0
-                self.cam_x = self.drag_start_cam[0] - world_dx
-                self.cam_y = self.drag_start_cam[1] - world_dy
+            wx, wy = self.screen_to_world(mx, my, scale)
+            self.measure_end_world = (wx, wy)
+            return
 
-    # --- picking / focus ---
+        # If we're following focus, don't pan at all
+        if self.follow_focus:
+            return
+
+        # Panning in normal mode
+        if self.left_down and not self.measure_mode and self.pan_anchor_world is not None:
+            dx = mx - self.left_down_pos[0]
+            dy = my - self.left_down_pos[1]
+
+            if not self.pan_active:
+                if dx * dx + dy * dy > self.drag_threshold_px ** 2:
+                    self.pan_active = True
+
+            if self.pan_active:
+                wx, wy = self.pan_anchor_world
+                if self.view_mode == "top":
+                    dx_world = (mx - self.width / 2) / scale
+                    dy_world = (my - self.height / 2) / scale
+                    self.cam_x = wx - dx_world
+                    self.cam_y = wy - dy_world
+                else:
+                    X = (mx - self.width / 2) / scale
+                    Y = (my - self.height / 2) / scale
+                    dx_minus_dy = X / 0.75
+                    dx_plus_dy = Y / 0.40
+                    dx_iso = (dx_minus_dy + dx_plus_dy) / 2.0
+                    dy_iso = (dx_plus_dy - dx_minus_dy) / 2.0
+                    self.cam_x = wx - dx_iso
+                    self.cam_y = wy - dy_iso
+
+    # --- clicking / focus ---
+
+    def handle_click(self, mx: int, my: int):
+        # First: if we're in local scope and click inside the moon panel, use that
+        if (
+            self.scope_mode == "local"
+            and self.moon_panel_rect is not None
+            and self.moon_panel_rect.collidepoint(mx, my)
+        ):
+            moon = self.pick_moonpanel_body_at(mx, my)
+            if moon:
+                self.set_focus(moon)
+                return
+            # Click near center selects parent planet
+            if self.moon_panel_center and self.moon_panel_parent:
+                cx, cy = self.moon_panel_center
+                if (mx - cx) ** 2 + (my - cy) ** 2 <= 12 ** 2:
+                    self.set_focus(self.moon_panel_parent)
+                    return
+
+        # Otherwise: normal system view picking
+        body = self.pick_body_at(mx, my)
+        if body:
+            self.set_focus(body)
 
     def pick_body_at(self, mx: float, my: float) -> Optional[Body]:
-        cam_x, cam_y = self.camera_center()
         scale = self.base_pixels_per_au * self.zoom
 
         best_body = None
@@ -525,12 +620,13 @@ class OrbitSandbox:
                 candidate_score = d2
 
             if b.parent is not None and b.a_au > 0:
-                cx, cy = self.world_to_screen(b.parent.pos[0], b.parent.pos[1], scale)
-                d_click_parent = math.hypot(mx - cx, my - cy)
+                px, py = self.world_to_screen(b.parent.pos[0], b.parent.pos[1], scale)
+                d_click_parent = math.hypot(mx - px, my - py)
                 r_orbit = b.a_au * scale
-                orbit_dist = abs(d_click_parent - r_orbit)
-                if r_orbit > 4 and orbit_dist <= 10.0:
-                    candidate_score = min(candidate_score, orbit_dist * orbit_dist)
+                if r_orbit > 4:
+                    diff = abs(d_click_parent - r_orbit)
+                    if diff < 10.0:
+                        candidate_score = min(candidate_score, diff * diff)
 
             if candidate_score < best_score:
                 best_score = candidate_score
@@ -540,10 +636,31 @@ class OrbitSandbox:
             return None
         return best_body
 
-    def handle_focus_click(self, mx: int, my: int):
-        body = self.pick_body_at(mx, my)
-        if body:
-            self.set_focus(body)
+    def pick_moonpanel_body_at(self, mx: float, my: float) -> Optional[Body]:
+        """Pick a moon from the mini-panel (screen coords)."""
+        if (
+            self.moon_panel_rect is None
+            or self.moon_panel_center is None
+            or not self.moon_panel_moons
+        ):
+            return None
+
+        cx, cy = self.moon_panel_center
+        scale = self.moon_panel_scale
+
+        best_moon = None
+        best_score = float("inf")
+        for m in self.moon_panel_moons:
+            x = cx + math.cos(m.angle) * m.a_au * scale
+            y = cy + math.sin(m.angle) * m.a_au * scale
+            dx = mx - x
+            dy = my - y
+            d2 = dx * dx + dy * dy
+            if d2 < best_score and d2 <= 10 ** 2:
+                best_score = d2
+                best_moon = m
+
+        return best_moon
 
     def cycle_focus(self, direction: int):
         if not self.focusables:
@@ -555,13 +672,20 @@ class OrbitSandbox:
         self.focus_body = body
         if body in self.focusables:
             self.focus_index = self.focusables.index(body)
+        self.cam_x, self.cam_y = body.pos
         self.recalc_time_scale()
-        self.center_camera_on_focus()
 
     # --- drawing ---
 
     def draw(self):
         self.screen.fill((0, 0, 0))
+
+        # reset moon-panel hit info for this frame
+        self.moon_panel_rect = None
+        self.moon_panel_center = None
+        self.moon_panel_parent = None
+        self.moon_panel_moons = []
+        self.moon_panel_scale = 1.0
 
         self.draw_system_view()
 
@@ -573,7 +697,7 @@ class OrbitSandbox:
             self.draw_moon_panel(self.focus_body)
 
         if self.measure_start_world and self.measure_end_world:
-            self.draw_measure_line()
+            self.draw_measurement_line()
 
         self.draw_info_panel()
         self.draw_help_overlay()
@@ -581,10 +705,9 @@ class OrbitSandbox:
         pygame.display.flip()
 
     def draw_system_view(self):
-        cam_x, cam_y = self.camera_center()
         scale = self.base_pixels_per_au * self.zoom
 
-        # Orbits
+        # orbits
         for b in self.system.bodies.values():
             if b.is_root():
                 continue
@@ -600,9 +723,9 @@ class OrbitSandbox:
             else:
                 col = (120, 100, 50)
 
-            self.draw_orbit_for_body(b, cam_x, cam_y, scale, col)
+            self.draw_orbit_for_body(b, scale, col)
 
-        # Bodies
+        # bodies
         for b in self.system.bodies.values():
             if b.is_belt():
                 continue
@@ -626,32 +749,7 @@ class OrbitSandbox:
                     self.screen, (255, 255, 255), (int(sx), int(sy)), size + 4, 1
                 )
 
-    def draw_orbit_for_body(self, b: Body, cam_x: float, cam_y: float, scale: float, color):
-        parent = b.parent
-        if not parent:
-            return
-
-        if self.view_mode == "top":
-            cx, cy = self.world_to_screen(parent.pos[0], parent.pos[1], scale)
-            r = max(1, int(b.a_au * scale))
-            if r > 1:
-                pygame.draw.circle(self.screen, color, (int(cx), int(cy)), r, 1)
-        else:
-            steps = 72
-            pts = []
-            for i in range(steps + 1):
-                theta = 2.0 * math.pi * i / steps
-                wx = parent.pos[0] + b.a_au * math.cos(theta)
-                wy = parent.pos[1] + b.a_au * math.sin(theta)
-                sx, sy = self.world_to_screen(wx, wy, scale)
-                pts.append((int(sx), int(sy)))
-            if len(pts) > 1:
-                pygame.draw.lines(self.screen, color, False, pts, 1)
-
     def draw_moon_panel(self, center_body: Body):
-        if not self.show_moons:
-            return
-
         moons = [m for m in center_body.children if not m.is_belt()]
         if not moons:
             return
@@ -665,15 +763,20 @@ class OrbitSandbox:
         panel_y = self.height - panel_height - 10
 
         rect = pygame.Rect(panel_x, panel_y, panel_width, panel_height)
+        self.moon_panel_rect = rect
+        self.moon_panel_parent = center_body
 
         pygame.draw.rect(self.screen, (8, 8, 20), rect)
         pygame.draw.rect(self.screen, (80, 80, 140), rect, 1)
 
         max_a = max(m.a_au for m in moons) or 1.0
         local_scale = 0.45 * min(rect.width, rect.height) / max_a
+        self.moon_panel_scale = local_scale
 
         cx = rect.centerx
         cy = rect.centery
+        self.moon_panel_center = (cx, cy)
+        self.moon_panel_moons = moons
 
         orbit_color = (90, 90, 120)
         for m in moons:
@@ -693,17 +796,22 @@ class OrbitSandbox:
         txt = self.small_font.render(label, True, (210, 210, 230))
         self.screen.blit(txt, (rect.x + 5, rect.y + 5))
 
-    def draw_measure_line(self):
-        sx_world, sy_world = self.measure_start_world
-        ex_world, ey_world = self.measure_end_world
-        scale = self.base_pixels_per_au * self.zoom
+    def draw_measurement_line(self):
+        if not (self.measure_start_world and self.measure_end_world):
+            return
 
-        sox, soy = self.world_to_screen(sx_world, sy_world, scale)
-        stx, sty = self.world_to_screen(ex_world, ey_world, scale)
+        scale = self.base_pixels_per_au * self.zoom
+        ax, ay = self.measure_start_world
+        bx, by = self.measure_end_world
+
+        sx1, sy1 = self.world_to_screen(ax, ay, scale)
+        sx2, sy2 = self.world_to_screen(bx, by, scale)
 
         pygame.draw.line(
-            self.screen, (0, 200, 255), (int(sox), int(soy)), (int(stx), int(sty)), 2
+            self.screen, (0, 200, 255), (int(sx1), int(sy1)), (int(sx2), int(sy2)), 2
         )
+        pygame.draw.circle(self.screen, (0, 200, 255), (int(sx1), int(sy1)), 3, 1)
+        pygame.draw.circle(self.screen, (0, 200, 255), (int(sx2), int(sy2)), 3, 1)
 
     def draw_info_panel(self):
         sidebar_width = int(self.width * 0.32)
@@ -715,13 +823,15 @@ class OrbitSandbox:
         lines: List[str] = []
 
         lines.append(f"System: {self.system.name}")
-        lines.append(f"View: {self.view_mode:<3}   Scope: {self.scope_mode:<6}")
-        lines.append(f"Speed x{self.speed_multiplier:.3f}   Measure: {'on' if self.measure_mode else 'off'}")
+        lines.append(
+            f"View: {self.view_mode:<3}   Scope: {self.scope_mode:<6}   Measure: {'ON' if self.measure_mode else 'off'}   Follow: {'ON' if self.follow_focus else 'off'}"
+        )
+        lines.append(f"Speed x{self.speed_multiplier:.3f}")
 
         b = self.focus_body
         if b and b.period_years > 0:
             seconds_per_orbit = BASE_ORBIT_SECONDS / self.speed_multiplier
-            lines.append(f"~{seconds_per_orbit:.1f}s per orbit at this speed")
+            lines.append(f"~{seconds_per_orbit:.1f}s per orbit for {b.name}")
 
         lines.append(f"Sim time: {self.sim_time_years:8.3f} years")
 
@@ -784,16 +894,16 @@ class OrbitSandbox:
                 lines.append(desc)
 
         if self.measure_start_world and self.measure_end_world:
-            sx, sy = self.measure_start_world
-            ex, ey = self.measure_end_world
-            dx = ex - sx
-            dy = ey - sy
+            ax, ay = self.measure_start_world
+            bx, by = self.measure_end_world
+            dx = bx - ax
+            dy = by - ay
             dist_au = math.hypot(dx, dy)
             dist_km = dist_au * AU_IN_KM
 
             lines.append("")
-            lines.append("Measure (drag line):")
-            lines.append(f"d ≈ {dist_au:.3f} AU  (~{dist_km:,.0f} km)")
+            lines.append("Measure segment:")
+            lines.append(f"d ≈ {dist_au:.3f} AU (~{dist_km:,.0f} km)")
 
             if dist_km > 0:
                 light_seconds = dist_km / SPEED_OF_LIGHT_KM_S
@@ -810,11 +920,11 @@ class OrbitSandbox:
                     v = SPEED_OF_LIGHT_KM_S * frac
                     t_sec = dist_km / v
                     t_days = t_sec / 86400.0
-                    lines.append(f"@ {frac:.0%} c: {t_days:.2f} d")
+                    lines.append(f"@{frac:.0%} c: {t_days:.2f} d")
 
                 t_ship_sec = dist_km / SHIP_SPEED_KM_S
                 t_ship_years = t_ship_sec / (86400.0 * 365.25)
-                lines.append(f"@ {SHIP_SPEED_KM_S:.0f} km/s: {t_ship_years:.2f} yr")
+                lines.append(f"@{SHIP_SPEED_KM_S:.0f} km/s: {t_ship_years:.2f} yr")
 
         x = rect.x + 10
         y = rect.y + 10
@@ -825,9 +935,9 @@ class OrbitSandbox:
 
     def draw_help_overlay(self):
         help_lines = [
-            "SPACE: play/pause   [ / ]: slower/faster   +/- or wheel: zoom   0: reset zoom",
-            "Left-drag: pan   Click: select focus   M: moon panel   V: top/iso",
-            "TAB / Shift+TAB / ↑↓: cycle focus   D: toggle measure   C: clear measure",
+            "SPACE: play/pause   [ / ]: slower/faster   +/- or wheel: zoom   0: reset zoom   C: recenter",
+            "TAB / Shift+TAB / ↑↓: focus   L-click: select   L-drag: pan   M: moon panel   V: top/iso",
+            "D: measure (L-drag)   F: follow focus   1/2/3: belts/moons/dwarfs   Click moons in mini-panel to focus",
         ]
         y = self.height - 3 * (self.small_font.get_height() + 2) - 4
         for line in help_lines:
