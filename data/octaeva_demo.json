@@ -1,0 +1,98 @@
+{
+  "id": "otaeva",
+  "name": "Otaeva (Trojan Demo)",
+  "bodies": [
+    {
+      "id": "otaeva_star",
+      "name": "Otaeva",
+      "type": "star",
+      "parent": null,
+      "a": 0.0,
+      "radius": 0.012,
+      "color": "#ffd7aa",
+      "tags": ["star", "k_dwarf"]
+    },
+
+    { "id": "belt_1", "name": "Inner Metal Belt", "type": "belt",
+      "parent": "otaeva_star", "a": 0.35, "radius": 0.0,
+      "color": "#555555", "tags": ["belt", "hot_metal"] },
+
+    { "id": "belt_2", "name": "Second Belt", "type": "belt",
+      "parent": "otaeva_star", "a": 0.70, "radius": 0.0,
+      "color": "#777777", "tags": ["belt", "dense"] },
+
+    {
+      "id": "earth_a",
+      "name": "Earth A",
+      "type": "planet",
+      "parent": "otaeva_star",
+      "a": 0.95,
+      "radius": 0.010,
+      "color": "#66aaff",
+      "tags": ["inner_earth", "habitable_candidate"]
+    },
+    {
+      "id": "earth_b",
+      "name": "Earth B (L4)",
+      "type": "planet",
+      "parent": "otaeva_star",
+      "a": 0.95,
+      "trojan_of": "earth_a",
+      "lagrange_point": "L4",
+      "radius": 0.010,
+      "color": "#88ccff",
+      "tags": ["inner_earth", "trojan"]
+    },
+    {
+      "id": "earth_c",
+      "name": "Earth C (L5)",
+      "type": "planet",
+      "parent": "otaeva_star",
+      "a": 0.95,
+      "trojan_of": "earth_a",
+      "lagrange_point": "L5",
+      "radius": 0.010,
+      "color": "#88ccff",
+      "tags": ["inner_earth", "trojan"]
+    },
+
+    { "id": "belt_3", "name": "Glass Ribbon Belt", "type": "belt",
+      "parent": "otaeva_star", "a": 1.25, "radius": 0.0,
+      "color": "#aaaaaa", "tags": ["belt", "ribbon"] },
+
+    {
+      "id": "gas_dwarf_a",
+      "name": "Gas Dwarf A",
+      "type": "gas_dwarf",
+      "parent": "otaeva_star",
+      "a": 2.0,
+      "radius": 0.050,
+      "color": "#66ddaa",
+      "tags": ["gas_dwarf", "sky_layer"]
+    },
+    {
+      "id": "earth_d",
+      "name": "Earth D (L4 of GDA)",
+      "type": "planet",
+      "parent": "otaeva_star",
+      "a": 2.0,
+      "trojan_of": "gas_dwarf_a",
+      "lagrange_point": "L4",
+      "radius": 0.010,
+      "color": "#66aaff",
+      "tags": ["mid_earth", "trojan"]
+    },
+    {
+      "id": "earth_e",
+      "name": "Earth E (L5 of GDA)",
+      "type": "planet",
+      "parent": "otaeva_star",
+      "a": 2.0,
+      "trojan_of": "gas_dwarf_a",
+      "lagrange_point": "L5",
+      "radius": 0.010,
+      "color": "#66aaff",
+      "tags": ["mid_earth", "trojan"]
+    }
+  ]
+}

@@ -29,6 +29,8 @@ New in this version
     * Orbit lines drawn as ellipses when e > 0.
 - Retrograde support:
     * `retrograde: true` in JSON will flip direction of orbital motion.
+- Trojan / Lagrange support:
+    * `trojan_of: "<id>"`, `lagrange_point: "L4"/"L5"` shares the host orbit with +/-60° phase shift.
 
 Usage
 -----
@@ -122,6 +124,11 @@ class Body:
         # Retrograde?
         self.retrograde: bool = bool(raw.get("retrograde", False))
 
+        # Trojan / Lagrange configuration
+        self.trojan_of_id: Optional[str] = raw.get("trojan_of")
+        self.lagrange_point: Optional[str] = raw.get("lagrange_point")
+        self.trojan_of: Optional["Body"] = None
+
         # Physical / visual
         self.radius_km: float = float(raw.get("radius", 0.0))
         self.visual_size: int = int(raw.get("visual_size", 4))
@@ -193,6 +200,9 @@ class SystemModel:
                     b.parent = parent
                     parent.children.append(b)
 
+        # Configure Trojans / Lagrange bodies (must happen after parents are linked)
+        self._configure_trojans()
+
         self.roots: List[Body] = [b for b in self.bodies.values() if b.is_root()]
         if not self.roots:
             raise ValueError("System must have at least one root (e.g., barycenter/star).")
@@ -250,6 +260,55 @@ class SystemModel:
         ]
         focusables.sort(key=lambda b: (b.type not in ("star", "primary_star"), b.a_au))
         return focusables
+
+    def _configure_trojans(self):
+        """
+        Configure simple Trojan / Lagrange behavior.
+
+        For any body with:
+            trojan_of_id: id of primary body
+            lagrange_point: "L4" or "L5"
+
+        we:
+          - force its a, e, and period_years to match the primary
+          - recompute mean_motion to match primary (with optional retrograde)
+          - offset its mean anomaly by ±60 degrees.
+        """
+        for b in self.bodies.values():
+            if not b.trojan_of_id:
+                continue
+
+            primary = self.bodies.get(b.trojan_of_id)
+            if primary is None:
+                continue
+
+            b.trojan_of = primary
+
+            # Share orbital elements with the primary
+            b.a_au = primary.a_au
+            b.e = primary.e
+            b.period_years = primary.period_years
+
+            # Recompute mean motion
+            if b.period_years > 0.0:
+                mm = 2.0 * math.pi / b.period_years
+            else:
+                mm = 0.0
+            if b.retrograde:
+                mm = -abs(mm)
+            b.mean_motion = mm
+
+            # Lagrange point offset: L4 = +60°, L5 = -60°
+            lp = (b.lagrange_point or "").upper()
+            if lp == "L4":
+                delta = math.radians(60.0)
+            elif lp == "L5":
+                delta = math.radians(-60.0)
+            else:
+                delta = 0.0
+
+            # Baseline on the primary's initial mean anomaly
+            b.angle = (primary.angle + delta) % (2.0 * math.pi)
 
 
 # ---------- JSON loading ----------
