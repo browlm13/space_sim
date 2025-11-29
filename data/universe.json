@@ -1,18 +1,30 @@
 {
+  "meta": {
+    "title": "Cosmic Wrath – Local Cluster",
+    "version": 1,
+    "notes": "RR + Ajhar + Tengri + Gargan; positions are symbolic in light‑years."
+  },
   "systems": [
     {
       "id": "rr",
       "name": "Romulus–Remus",
-      "bodies_file": "rr_system.json",
       "offset": [0.0, 0.0],
-      "color": "#ffd27f"
+      "color": "#ffd27f",
+      "bodies_file": "rr.json"
+    },
+    {
+      "id": "ajhar",
+      "name": "Ajhar",
+      "offset": [1.7, 0.6],
+      "color": "#ffb070",
+      "bodies_file": "ajhar.json"
     },
     {
       "id": "tengri",
       "name": "Tengri",
-      "bodies_file": "tengri_system.json",
-      "offset": [1.8, 0.2],
-      "color": "#ffe5cc"
+      "offset": [-2.2, -0.4],
+      "color": "#7fe0ff",
+      "bodies_file": "tengri.json"
     },
     {
       "id": "gargan",
@@ -20,13 +32,6 @@
       "bodies_file": "gargan_system.json",
       "offset": [-1.4, 0.9],
       "color": "#ff9f9f"
-    },
-    {
-      "id": "octaeva",
-      "name": "Octaeva",
-      "bodies_file": "octaeva_system.json",
-      "offset": [0.5, -1.6],
-      "color": "#a6c8ff"
     }
   ]
 }

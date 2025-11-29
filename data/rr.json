@@ -1,0 +1,457 @@
+{
+  "id": "rr",
+  "name": "Romulus–Remus",
+  "bodies": [
+    {
+      "id": "rr_barycenter",
+      "name": "Romulus–Remus Barycenter",
+      "type": "barycenter",
+      "parent": null,
+      "a": 0.0,
+      "radius": 0.0,
+      "visual_size": 4,
+      "color": "#ffffff",
+      "tags": ["rr", "center"]
+    },
+    {
+      "id": "romulus",
+      "name": "Romulus",
+      "type": "star",
+      "parent": "rr_barycenter",
+      "a": 0.10,
+      "radius": 0.03,
+      "visual_size": 12,
+      "color": "#ffd27f",
+      "tags": ["rr", "star", "primary"]
+    },
+    {
+      "id": "remus",
+      "name": "Remus",
+      "type": "star",
+      "parent": "rr_barycenter",
+      "a": 0.10,
+      "radius": 0.025,
+      "visual_size": 10,
+      "color": "#ff9b5a",
+      "tags": ["rr", "star", "secondary"]
+    },
+
+    {
+      "id": "cinder",
+      "name": "Cinder",
+      "type": "planet",
+      "parent": "rr_barycenter",
+      "a": 0.85,
+      "radius": 0.009,
+      "visual_size": 5,
+      "color": "#ff7f5a",
+      "tags": ["rr", "sunlit", "terrestrial", "hot"],
+      "meta": {
+        "short_description": "Inner hot world; liveable only in sky‑habitats and high orbits.",
+        "gravity_g": 0.9,
+        "atmosphere": "toxic super‑greenhouse",
+        "climate": "oven‑hot dayside, storm‑ridden terminators"
+      }
+    },
+    {
+      "id": "gaia",
+      "name": "Gaia",
+      "type": "planet",
+      "parent": "rr_barycenter",
+      "a": 1.04,
+      "radius": 0.01,
+      "visual_size": 6,
+      "color": "#5fd0ff",
+      "tags": ["rr", "sunlit", "terrestrial", "mother_world", "habitable"],
+      "meta": {
+        "short_description": "Old Mother World; cultural and historical reference frame for almost everything.",
+        "gravity_g": 1.0,
+        "atmosphere": "nitrogen‑oxygen, industrial era plus remediation",
+        "climate": "Earthlike but heavily engineered",
+        "primary_species": ["baseline humans", "near‑baseline clades"]
+      }
+    },
+    {
+      "id": "allure",
+      "name": "Allure",
+      "type": "planet",
+      "parent": "rr_barycenter",
+      "a": 1.28,
+      "radius": 0.011,
+      "visual_size": 6,
+      "color": "#7fe8ff",
+      "tags": ["rr", "sunlit", "terrestrial", "ocean_world", "habitable"],
+      "meta": {
+        "short_description": "Bright ocean super‑Earth; orbital resorts and biotech enclaves.",
+        "gravity_g": 1.1,
+        "atmosphere": "humid, maritime",
+        "climate": "stormy archipelagos"
+      }
+    },
+    {
+      "id": "eden",
+      "name": "Eden",
+      "type": "moon",
+      "parent": "allure",
+      "a": 0.003,
+      "radius": 0.006,
+      "visual_size": 4,
+      "color": "#9fffd0",
+      "tags": ["rr", "sunlit", "moon", "habitable"],
+      "meta": {
+        "short_description": "Garden moon of Allure; dense high‑value pleasure and civic habitats.",
+        "gravity_g": 0.7,
+        "atmosphere": "breathable, tuned for comfort",
+        "climate": "mild, curated"
+      }
+    },
+    {
+      "id": "dawn",
+      "name": "Dawn",
+      "type": "planet",
+      "parent": "rr_barycenter",
+      "a": 1.52,
+      "radius": 0.0095,
+      "visual_size": 5,
+      "color": "#e0aa7f",
+      "tags": ["rr", "sunlit", "terrestrial", "industrial", "terraformable"],
+      "meta": {
+        "short_description": "Industrial labor world; main heavy‑industry base for the Sunlit Alliance.",
+        "gravity_g": 0.95,
+        "atmosphere": "thin‑ish, partly terraformed",
+        "climate": "cool, dry continents and megaforges"
+      }
+    },
+
+    {
+      "id": "dawn_belt",
+      "name": "Dawn Belt",
+      "type": "belt",
+      "parent": "rr_barycenter",
+      "a": 2.8,
+      "radius": 0.0,
+      "visual_size": 2,
+      "color": "#888888",
+      "tags": ["rr", "belt", "industrial"]
+    },
+
+    {
+      "id": "colossus",
+      "name": "Colossus",
+      "type": "gas_giant",
+      "parent": "rr_barycenter",
+      "a": 6.0,
+      "radius": 0.09,
+      "visual_size": 10,
+      "color": "#ffaa66",
+      "tags": ["rr", "giant", "twilight", "colossus"]
+    },
+
+    {
+      "id": "prosperity",
+      "name": "Prosperity",
+      "type": "gas_giant",
+      "parent": "rr_barycenter",
+      "a": 9.0,
+      "radius": 0.07,
+      "visual_size": 9,
+      "color": "#9f7fff",
+      "tags": ["rr", "giant", "twilight", "prosperity"],
+      "meta": {
+        "short_description": "Purple‑blue ring giant; political and economic heart of the Twilight bloc.",
+        "gravity_g": 2.5,
+        "atmosphere": "deep hydrogen‑helium with rich organics",
+        "climate": "bands, storms and long‑lived vortices"
+      }
+    },
+
+    {
+      "id": "prosperity_ring_inner",
+      "name": "Prosperity First Ring",
+      "type": "belt",
+      "parent": "prosperity",
+      "a": 0.0009,
+      "radius": 0.0,
+      "visual_size": 1,
+      "color": "#ddeeff",
+      "tags": ["rr", "prosperity", "ring", "inner"]
+    },
+    {
+      "id": "prosperity_ring_central",
+      "name": "Prosperity Central Ring",
+      "type": "belt",
+      "parent": "prosperity",
+      "a": 0.0012,
+      "radius": 0.0,
+      "visual_size": 1,
+      "color": "#c0c0ff",
+      "tags": ["rr", "prosperity", "ring", "central"]
+    },
+    {
+      "id": "prosperity_ring_outer",
+      "name": "Prosperity Outer Ring",
+      "type": "belt",
+      "parent": "prosperity",
+      "a": 0.0015,
+      "radius": 0.0,
+      "visual_size": 1,
+      "color": "#8890ff",
+      "tags": ["rr", "prosperity", "ring", "outer"]
+    },
+
+    {
+      "id": "icarus",
+      "name": "Icarus",
+      "type": "moon",
+      "parent": "prosperity",
+      "a": 0.001491,
+      "radius": 0.006,
+      "visual_size": 4,
+      "color": "#f0e0c0",
+      "tags": ["rr", "prosperity", "moon", "garden", "inner", "B_class"]
+    },
+    {
+      "id": "lotus",
+      "name": "Lotus",
+      "type": "moon",
+      "parent": "prosperity",
+      "a": 0.002087,
+      "radius": 0.0085,
+      "visual_size": 5,
+      "color": "#c0ffe0",
+      "tags": ["rr", "prosperity", "moon", "garden", "inner", "A_class"]
+    },
+    {
+      "id": "ada",
+      "name": "Ada",
+      "type": "moon",
+      "parent": "prosperity",
+      "a": 0.002832,
+      "radius": 0.0095,
+      "visual_size": 5,
+      "color": "#a0d0ff",
+      "tags": ["rr", "prosperity", "moon", "garden", "inner", "A_class"]
+    },
+    {
+      "id": "felicity",
+      "name": "Felicity",
+      "type": "moon",
+      "parent": "prosperity",
+      "a": 0.003875,
+      "radius": 0.013,
+      "visual_size": 6,
+      "color": "#ffd0a0",
+      "tags": ["rr", "prosperity", "moon", "garden", "core", "S_class"]
+    },
+    {
+      "id": "opus",
+      "name": "Opus",
+      "type": "moon",
+      "parent": "prosperity",
+      "a": 0.005366,
+      "radius": 0.009,
+      "visual_size": 5,
+      "color": "#e0c090",
+      "tags": ["rr", "prosperity", "moon", "garden", "core", "A_class"]
+    },
+    {
+      "id": "sylva",
+      "name": "Sylva",
+      "type": "moon",
+      "parent": "prosperity",
+      "a": 0.007155,
+      "radius": 0.0075,
+      "visual_size": 4,
+      "color": "#90ff90",
+      "tags": ["rr", "prosperity", "moon", "garden", "outer", "B_class"]
+    },
+    {
+      "id": "morana",
+      "name": "Morana",
+      "type": "moon",
+      "parent": "prosperity",
+      "a": 0.009241,
+      "radius": 0.0065,
+      "visual_size": 4,
+      "color": "#a0c0ff",
+      "tags": ["rr", "prosperity", "moon", "garden", "outer", "B_class"]
+    },
+    {
+      "id": "onna",
+      "name": "Onna",
+      "type": "moon",
+      "parent": "prosperity",
+      "a": 0.011925,
+      "radius": 0.008,
+      "visual_size": 5,
+      "color": "#b0f0ff",
+      "tags": ["rr", "prosperity", "moon", "garden", "outer", "A_class"]
+    },
+    {
+      "id": "nadir",
+      "name": "Nadir",
+      "type": "moon",
+      "parent": "prosperity",
+      "a": 0.014906,
+      "radius": 0.007,
+      "visual_size": 4,
+      "color": "#d0e0ff",
+      "tags": ["rr", "prosperity", "moon", "garden", "outer_edge", "B_class"]
+    },
+
+    {
+      "id": "concordia",
+      "name": "Concordia",
+      "type": "planet",
+      "parent": "rr_barycenter",
+      "a": 9.0,
+      "radius": 0.013,
+      "visual_size": 6,
+      "color": "#c8f0ff",
+      "tags": ["rr", "trojan", "prosperity_l4", "super_earth"],
+      "trojan_of": "prosperity",
+      "lagrange_point": "L4"
+    },
+    {
+      "id": "pax",
+      "name": "Pax",
+      "type": "moon",
+      "parent": "concordia",
+      "a": 0.003,
+      "radius": 0.006,
+      "visual_size": 4,
+      "color": "#e0ffd0",
+      "tags": ["rr", "trojan_moon", "concordia", "B_class"]
+    },
+
+    {
+      "id": "osiris_prime",
+      "name": "Osiris Prime",
+      "type": "planet",
+      "parent": "rr_barycenter",
+      "a": 9.0,
+      "radius": 0.01,
+      "visual_size": 5,
+      "color": "#a0b0ff",
+      "tags": ["rr", "trojan", "prosperity_l5", "cluster_core"],
+      "trojan_of": "prosperity",
+      "lagrange_point": "L5"
+    },
+    {
+      "id": "osiris_secundus",
+      "name": "Osiris Secundus",
+      "type": "planet",
+      "parent": "rr_barycenter",
+      "a": 9.0,
+      "radius": 0.0065,
+      "visual_size": 4,
+      "color": "#9f9fff",
+      "tags": ["rr", "trojan", "prosperity_l5", "cluster_world"],
+      "trojan_of": "prosperity",
+      "lagrange_point": "L5"
+    },
+    {
+      "id": "osiris_tertius",
+      "name": "Osiris Tertius",
+      "type": "planet",
+      "parent": "rr_barycenter",
+      "a": 9.0,
+      "radius": 0.006,
+      "visual_size": 4,
+      "color": "#8f8fff",
+      "tags": ["rr", "trojan", "prosperity_l5", "cluster_world"],
+      "trojan_of": "prosperity",
+      "lagrange_point": "L5"
+    },
+
+    {
+      "id": "vesper",
+      "name": "Vesper",
+      "type": "gas_giant",
+      "parent": "rr_barycenter",
+      "a": 12.0,
+      "radius": 0.07,
+      "visual_size": 9,
+      "color": "#6688ff",
+      "tags": ["rr", "giant", "deep_twilight"]
+    },
+    {
+      "id": "maroon",
+      "name": "Maroon",
+      "type": "gas_giant",
+      "parent": "rr_barycenter",
+      "a": 16.0,
+      "radius": 0.07,
+      "visual_size": 9,
+      "color": "#aa5577",
+      "tags": ["rr", "giant", "deep_twilight"]
+    },
+    {
+      "id": "hades",
+      "name": "Hades",
+      "type": "gas_giant",
+      "parent": "rr_barycenter",
+      "a": 22.0,
+      "radius": 0.07,
+      "visual_size": 9,
+      "color": "#444466",
+      "tags": ["rr", "giant", "edge"]
+    },
+
+    {
+      "id": "onyx",
+      "name": "Onyx",
+      "type": "dwarf_planet",
+      "parent": "rr_barycenter",
+      "a": 40.0,
+      "radius": 0.006,
+      "visual_size": 3,
+      "color": "#202040",
+      "tags": ["rr", "midnight", "black_ice"]
+    },
+    {
+      "id": "kelvun",
+      "name": "Kelvun",
+      "type": "dwarf_planet",
+      "parent": "rr_barycenter",
+      "a": 55.0,
+      "radius": 0.006,
+      "visual_size": 3,
+      "color": "#404060",
+      "tags": ["rr", "midnight"]
+    },
+    {
+      "id": "sable",
+      "name": "Sable",
+      "type": "dwarf_planet",
+      "parent": "rr_barycenter",
+      "a": 70.0,
+      "radius": 0.006,
+      "visual_size": 3,
+      "color": "#303050",
+      "tags": ["rr", "midnight", "mirror_desert"]
+    },
+    {
+      "id": "jaffar",
+      "name": "Jaffar",
+      "type": "dwarf_planet",
+      "parent": "rr_barycenter",
+      "a": 85.0,
+      "radius": 0.006,
+      "visual_size": 3,
+      "color": "#404050",
+      "tags": ["rr", "midnight", "methane_maze"]
+    },
+    {
+      "id": "nill",
+      "name": "Nill",
+      "type": "dwarf_planet",
+      "parent": "rr_barycenter",
+      "a": 100.0,
+      "radius": 0.006,
+      "visual_size": 3,
+      "color": "#505060",
+      "tags": ["rr", "midnight", "rogue_like"]
+    }
+  ]
+}

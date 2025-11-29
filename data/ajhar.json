@@ -1,0 +1,112 @@
+{
+  "id": "ajhar",
+  "name": "Ajhar",
+  "bodies": [
+    {
+      "id": "ajhar_star",
+      "name": "Ajhar",
+      "type": "star",
+      "parent": null,
+      "a": 0.0,
+      "radius": 0.015,
+      "visual_size": 11,
+      "color": "#ffbb66",
+      "tags": ["ajhar", "star", "k_dwarf"]
+    },
+
+    {
+      "id": "vahran",
+      "name": "Vahran",
+      "type": "gas_giant",
+      "parent": "ajhar_star",
+      "a": 0.05,
+      "radius": 0.07,
+      "visual_size": 7,
+      "color": "#f08040",
+      "tags": ["ajhar", "hot_jupiter"]
+    },
+
+    {
+      "id": "mithra",
+      "name": "Mithra",
+      "type": "planet",
+      "parent": "ajhar_star",
+      "a": 0.25,
+      "radius": 0.0095,
+      "visual_size": 5,
+      "color": "#ffaa88",
+      "tags": ["ajhar", "terrestrial", "hot_inner"]
+    },
+    {
+      "id": "anahita_prime",
+      "name": "Anahita Prime",
+      "type": "planet",
+      "parent": "ajhar_star",
+      "a": 0.55,
+      "radius": 0.011,
+      "visual_size": 6,
+      "color": "#88d0ff",
+      "tags": ["ajhar", "terrestrial", "habitable_core"]
+    },
+
+    {
+      "id": "kavadesh",
+      "name": "Kavadesh",
+      "type": "gas_giant",
+      "parent": "ajhar_star",
+      "a": 0.9,
+      "radius": 0.065,
+      "visual_size": 8,
+      "color": "#ccaa66",
+      "tags": ["ajhar", "gas_giant", "moon_swarm_anchor"]
+    },
+
+    {
+      "id": "zurvan",
+      "name": "Zurvan",
+      "type": "planet",
+      "parent": "ajhar_star",
+      "a": 1.6,
+      "radius": 0.009,
+      "visual_size": 5,
+      "color": "#c0b090",
+      "tags": ["ajhar", "terrestrial", "cold_desert"]
+    },
+
+    {
+      "id": "ajhar_inner_belt",
+      "name": "Ajhar Inner Belt",
+      "type": "belt",
+      "parent": "ajhar_star",
+      "a": 2.8,
+      "radius": 0.0,
+      "visual_size": 2,
+      "color": "#888888",
+      "tags": ["ajhar", "belt"]
+    },
+
+    {
+      "id": "daeva",
+      "name": "Daeva",
+      "type": "gas_giant",
+      "parent": "ajhar_star",
+      "a": 5.0,
+      "radius": 0.06,
+      "visual_size": 8,
+      "color": "#6677cc",
+      "tags": ["ajhar", "gas_giant", "outer"]
+    },
+
+    {
+      "id": "ajhar_outer_belt",
+      "name": "Ajhar Outer Belt",
+      "type": "belt",
+      "parent": "ajhar_star",
+      "a": 8.0,
+      "radius": 0.0,
+      "visual_size": 2,
+      "color": "#666666",
+      "tags": ["ajhar", "belt", "outer"]
+    }
+  ]
+}
