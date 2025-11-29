@@ -1,14 +1,14 @@
 {
- "systems": [
+  "systems": [
     {
       "id": "rr",
-      "name": "Romulus–Remus System",
-      "bodies_file": "system.json"
+      "name": "Romulus–Remus",
+      "bodies_file": "rr_system.json"
     },
     {
       "id": "tengri",
       "name": "Tengri",
-      "bodies_file": "system_tengri.json"
+      "bodies_file": "tengri_system.json"
     }
   ]
 }

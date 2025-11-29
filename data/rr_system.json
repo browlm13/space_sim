@@ -1,0 +1,92 @@
+{
+  "id": "rr",
+  "name": "Romulus–Remus",
+  "bodies": [
+    {
+      "id": "rr_bary",
+      "name": "RR Barycenter",
+      "type": "barycenter",
+      "a": 0,
+      "radius": 0,
+      "visual_size": 3,
+      "color": "#777777"
+    },
+    {
+      "id": "romulus",
+      "name": "Romulus",
+      "type": "star",
+      "parent": "rr_bary",
+      "a": 0.01,
+      "radius": 500000,
+      "visual_size": 10,
+      "color": "#ffd27f",
+      "period_years": 1.0
+    },
+    {
+      "id": "remus",
+      "name": "Remus",
+      "type": "star",
+      "parent": "rr_bary",
+      "a": 0.01,
+      "radius": 450000,
+      "visual_size": 9,
+      "color": "#ffe6b0",
+      "period_years": 1.0,
+      "phase_deg": 180
+    },
+    {
+      "id": "cinder",
+      "name": "Cinder",
+      "type": "planet",
+      "parent": "rr_bary",
+      "a": 0.3,
+      "radius": 3000,
+      "visual_size": 4,
+      "color": "#ff8243"
+    },
+    {
+      "id": "gaia",
+      "name": "Gaia",
+      "type": "planet",
+      "parent": "rr_bary",
+      "a": 1.0,
+      "radius": 6400,
+      "visual_size": 5,
+      "color": "#6ec4ff",
+      "meta": {
+        "gravity_g": 1.0,
+        "short_description": "Baseline habitable world for testing."
+      }
+    },
+    {
+      "id": "prosperity",
+      "name": "Prosperity",
+      "type": "gas_giant",
+      "parent": "rr_bary",
+      "a": 4.0,
+      "radius": 60000,
+      "visual_size": 7,
+      "color": "#f5cf8c"
+    },
+    {
+      "id": "prosperity_m1",
+      "name": "M1",
+      "type": "moon",
+      "parent": "prosperity",
+      "a": 0.02,
+      "radius": 1500,
+      "visual_size": 3,
+      "color": "#d0d0d0"
+    },
+    {
+      "id": "prosperity_m2",
+      "name": "M2",
+      "type": "moon",
+      "parent": "prosperity",
+      "a": 0.035,
+      "radius": 2000,
+      "visual_size": 3,
+      "color": "#c0a0ff"
+    }
+  ]
+}
