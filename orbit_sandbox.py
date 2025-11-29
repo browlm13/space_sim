@@ -12,9 +12,10 @@ Features
 - Animate circular orbits using Kepler-style T ~ a^(3/2).
 - Hierarchical orbits: barycenter -> stars -> planets -> moons.
 - Top-down AND isometric view modes (toggle with V).
-- "System" vs "Local" scope (M key: full-screen moon-system view).
+- System vs Local (moon-system) scope (toggle with M).
 - Time controls, zoom, focus, click-to-focus.
-- Info panel with orbit stats and simple lore metadata.
+- Info panel acts as a mini wiki: orbit stats + gravity, population, atmosphere, species, etc.
+- Shows distance from center in light-minutes and straight-line travel times at 0.1c / 0.01c.
 
 Usage
 -----
@@ -37,7 +38,8 @@ from typing import Dict, List, Optional, Tuple
 import pygame
 
 AU_IN_KM = 149_597_870.7
-SHIP_SPEED_KM_S = 20.0  # for "time to go once around"
+SHIP_SPEED_KM_S = 20.0      # for "time to go once around"
+SPEED_OF_LIGHT_KM_S = 299_792.458
 
 
 # ---------- Data model ----------
@@ -252,7 +254,7 @@ class OrbitSandbox:
         self.system = system
         self.sim_time_years = 0.0
         self.running = True
-        self.time_scale = 1.0  # 1.0 = "1 sim year per real second" (roughly)
+        self.time_scale = 1.0  # global years-per-second
 
         # Projection: "top" or "iso"
         self.view_mode = "top"
@@ -397,14 +399,13 @@ class OrbitSandbox:
         if key == pygame.K_3:
             self.show_dwarfs = not self.show_dwarfs
 
-        # NEW: view mode toggle
+        # View mode toggle
         if key == pygame.K_v:
             self.view_mode = "iso" if self.view_mode == "top" else "top"
 
-        # NEW: scope toggle (system vs local moon system)
+        # Scope toggle (system vs local moon system)
         if key == pygame.K_m:
             if self.scope_mode == "system":
-                # only enter local view if the focused body has children
                 if self.focus_body and self.focus_body.children:
                     self.scope_mode = "local"
             else:
@@ -560,11 +561,14 @@ class OrbitSandbox:
         lines: List[str] = []
         lines.append(f"System: {self.system.name}")
         lines.append(
-            f"View: {self.view_mode:<3}   Scope: {self.scope_mode:<6}   Sim time: {self.sim_time_years:8.3f} years   speed x{self.time_scale:.3f}"
+            f"View: {self.view_mode:<3}   Scope: {self.scope_mode:<6}   speed x{self.time_scale:.3f}"
         )
-        if self.focus_body:
-            b = self.focus_body
+        lines.append(f"Sim time: {self.sim_time_years:8.3f} years")
+
+        b = self.focus_body
+        if b:
             lines.append(f"Focus: {b.name}  [{b.type}]")
+
             if b.a_au > 0:
                 period = b.period_years
                 a_km = b.a_au * AU_IN_KM
@@ -576,34 +580,74 @@ class OrbitSandbox:
                     f"Orbit length ~ {circumference:,.0f} km; "
                     f"{ship_days:,.1f} days @ {SHIP_SPEED_KM_S:.0f} km/s"
                 )
+
+                # Distance from center in light-minutes
+                light_seconds = a_km / SPEED_OF_LIGHT_KM_S
+                light_minutes = light_seconds / 60.0
+                lines.append(f"Distance from center ≈ {light_minutes:.1f} light-minutes")
+
+                # Straight-line travel times at 0.1c and 0.01c
+                for frac in (0.1, 0.01):
+                    v = SPEED_OF_LIGHT_KM_S * frac
+                    t_sec = a_km / v
+                    t_days = t_sec / 86400.0
+                    lines.append(f"Straight-line @ {frac:.0%} c: {t_days:.2f} days")
             else:
                 lines.append("a = 0 (central body)")
 
-            g = b.meta.get("gravity_g")
-            pop = b.meta.get("population_estimate")
-            if g is not None or pop is not None:
-                bits = []
-                if g is not None:
-                    bits.append(f"g ≈ {g}")
-                if pop is not None:
-                    bits.append(f"pop ~ {pop}")
-                lines.append(" / ".join(bits))
+            # Mini-wiki metadata
+            meta = b.meta or {}
+            g = meta.get("gravity_g")
+            radius_meta = meta.get("radius_km")
+            radius = radius_meta if radius_meta is not None else (b.radius_km or None)
+            pop = meta.get("population") or meta.get("population_estimate")
 
-            desc = b.meta.get("short_description")
+            stats_bits = []
+            if g is not None:
+                stats_bits.append(f"g ≈ {g}")
+            if radius is not None:
+                try:
+                    stats_bits.append(f"R ≈ {float(radius):,.0f} km")
+                except Exception:
+                    stats_bits.append(f"R ≈ {radius} km")
+            if pop is not None:
+                stats_bits.append(f"pop ~ {pop}")
+            if stats_bits:
+                lines.append(" / ".join(stats_bits))
+
+            atm = meta.get("atmosphere")
+            climate = meta.get("climate")
+            env_bits = []
+            if atm:
+                env_bits.append(f"atm: {atm}")
+            if climate:
+                env_bits.append(f"climate: {climate}")
+            if env_bits:
+                lines.append(" ; ".join(env_bits))
+
+            species = meta.get("primary_species") or meta.get("species")
+            if isinstance(species, list):
+                species_str = ", ".join(species)
+            else:
+                species_str = species
+            if species_str:
+                lines.append(f"species: {species_str}")
+
+            desc = meta.get("short_description")
             if desc:
                 lines.append(desc)
 
         # Render
         x = 10
         y = 10
-        for line in lines[:8]:
+        for line in lines[:14]:
             txt = self.font.render(line, True, (220, 220, 220))
             self.screen.blit(txt, (x, y))
             y += txt.get_height() + 2
 
     def draw_help_overlay(self):
         help_lines = [
-            "SPACE: play/pause   [ / ]: slower / faster time   +/- or wheel: zoom   0: reset zoom",
+            "SPACE: play/pause   [ / ]: slower/faster   +/- or wheel: zoom   0: reset zoom",
             "TAB / Shift+TAB / ↑↓: cycle focus   Click: focus   M: system/local moons   1: belts  2: moons  3: dwarfs   V: top/iso",
         ]
         y = self.height - 40
