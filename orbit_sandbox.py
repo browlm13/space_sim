@@ -7,25 +7,18 @@ Minimal sandbox orbit viewer for fictional systems.
 Features
 --------
 - Load either:
-    * a system JSON with bodies, or
-    * a universe JSON with multiple systems, then select one by id.
+    * a system JSON: { "id": "...", "name": "...", "bodies": [...] }
+    * a universe JSON: { "systems": [ { "id": "...", "bodies_file": "...", ... }, ... ] }
 - Animate circular orbits using Kepler-style T ~ a^(3/2).
 - Hierarchical orbits: barycenter -> stars -> planets -> moons.
-- Top-down view with:
-    * pause/play
-    * time speed controls
-    * zoom and focus switching
-    * click-to-focus
-- Info panel for the focused body.
-- Mini moon-system view when the focused body has moons.
+- Top-down AND isometric view modes (toggle with V).
+- Time controls, zoom, focus, click-to-focus.
+- Info panel with orbit stats and simple lore metadata.
 
 Usage
 -----
-    python orbit_sandbox.py system_rr.json
-
-or (with a universe index):
-
-    python orbit_sandbox.py universe.json --system rr
+    python orbit_sandbox.py data/system.json
+    python orbit_sandbox.py data/universe.json --system rr
 
 Dependencies
 -----------
@@ -196,7 +189,7 @@ def load_system_from_json(path: str, system_id: Optional[str] = None) -> SystemM
     """
     Load either:
       - a system JSON: { "id": "...", "name": "...", "bodies": [...] }
-      - a universe JSON: { "systems": [ { "id": "...", "bodies_file": "...", ... }, ... ] }
+      - a universe JSON: { "systems": [ { "id": "...", "bodies_file": "...", ... } ] }
     """
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -231,7 +224,8 @@ def load_system_from_json(path: str, system_id: Optional[str] = None) -> SystemM
             base_dir = os.path.dirname(path)
             bodies_path = os.path.join(base_dir, bodies_file)
             with open(bodies_path, "r", encoding="utf-8") as bf:
-                bodies_data = json.load(bf)["bodies"]
+                bodies_json = json.load(bf)
+                bodies_data = bodies_json["bodies"]
 
         return SystemModel(sid, name, bodies_data)
 
@@ -258,6 +252,9 @@ class OrbitSandbox:
         self.sim_time_years = 0.0
         self.running = True
         self.time_scale = 1.0  # 1.0 = "1 sim year per real second" (roughly)
+
+        # NEW: view mode – "top" or "iso"
+        self.view_mode = "top"
 
         # scaling: base pixels per AU (before zoom)
         self.base_pixels_per_au = 0.44 * min(self.width, self.height) / system.max_a_au
@@ -287,6 +284,51 @@ class OrbitSandbox:
                 self.sim_time_years += dt_years
                 self.system.update(dt_years)
             self.draw()
+
+    # --- coordinate projection helpers ---
+
+    def project_world(self, wx: float, wy: float, cam_x: float, cam_y: float, scale: float):
+        """
+        Convert world coords (AU) to screen coords (pixels)
+        according to the current view_mode.
+        """
+        dx = wx - cam_x
+        dy = wy - cam_y
+
+        if self.view_mode == "top":
+            sx = self.width / 2 + dx * scale
+            sy = self.height / 2 + dy * scale
+        else:  # isometric / tilted
+            # simple fake-3D projection: rotate & squash
+            iso_x = (dx - dy) * scale * 0.75
+            iso_y = (dx + dy) * scale * 0.40
+            sx = self.width / 2 + iso_x
+            sy = self.height / 2 + iso_y
+
+        return sx, sy
+
+    def draw_orbit_for_body(self, b: Body, cam_x: float, cam_y: float, scale: float, color):
+        parent = b.parent
+        if not parent:
+            return
+
+        if self.view_mode == "top":
+            cx, cy = self.project_world(parent.pos[0], parent.pos[1], cam_x, cam_y, scale)
+            r = max(1, int(b.a_au * scale))
+            if r > 1:
+                pygame.draw.circle(self.screen, color, (int(cx), int(cy)), r, 1)
+        else:
+            # approximate orbit with a polyline ellipse
+            steps = 72
+            pts = []
+            for i in range(steps + 1):
+                theta = 2.0 * math.pi * i / steps
+                wx = parent.pos[0] + b.a_au * math.cos(theta)
+                wy = parent.pos[1] + b.a_au * math.sin(theta)
+                sx, sy = self.project_world(wx, wy, cam_x, cam_y, scale)
+                pts.append((int(sx), int(sy)))
+            if len(pts) > 1:
+                pygame.draw.lines(self.screen, color, False, pts, 1)
 
     # --- event handling ---
 
@@ -346,6 +388,10 @@ class OrbitSandbox:
         if key == pygame.K_3:
             self.show_dwarfs = not self.show_dwarfs
 
+        # NEW: view mode toggle
+        if key == pygame.K_v:
+            self.view_mode = "iso" if self.view_mode == "top" else "top"
+
     def handle_click(self, pos):
         mx, my = pos
         cam_x, cam_y = self.camera_center()
@@ -356,8 +402,8 @@ class OrbitSandbox:
         for b in self.system.bodies.values():
             if b.is_belt():
                 continue
-            sx = self.width / 2 + (b.pos[0] - cam_x) * scale
-            sy = self.height / 2 + (b.pos[1] - cam_y) * scale
+
+            sx, sy = self.project_world(b.pos[0], b.pos[1], cam_x, cam_y, scale)
             dx = sx - mx
             dy = sy - my
             d2 = dx * dx + dy * dy
@@ -376,7 +422,6 @@ class OrbitSandbox:
 
     def set_focus(self, body: Body):
         self.focus_body = body
-        # Keep focusables sorted; set index if body is in list
         if body in self.focusables:
             self.focus_index = self.focusables.index(body)
 
@@ -403,23 +448,12 @@ class OrbitSandbox:
             if b.type == "dwarf_planet" and not self.show_dwarfs:
                 continue
 
-            parent = b.parent
-            if not parent:
-                continue
-
-            cx_world, cy_world = parent.pos
-            cx = self.width / 2 + (cx_world - cam_x) * scale
-            cy = self.height / 2 + (cy_world - cam_y) * scale
-            r = max(1, int(b.a_au * scale))
-            if r <= 1:
-                continue
-
-            # Simple orbit color logic
             if b.is_belt():
                 col = (90, 90, 90)
             else:
                 col = (120, 100, 50)
-            pygame.draw.circle(self.screen, col, (int(cx), int(cy)), r, 1)
+
+            self.draw_orbit_for_body(b, cam_x, cam_y, scale, col)
 
         # Draw bodies
         for b in self.system.bodies.values():
@@ -430,8 +464,7 @@ class OrbitSandbox:
             if b.type == "dwarf_planet" and not self.show_dwarfs:
                 continue
 
-            sx = self.width / 2 + (b.pos[0] - cam_x) * scale
-            sy = self.height / 2 + (b.pos[1] - cam_y) * scale
+            sx, sy = self.project_world(b.pos[0], b.pos[1], cam_x, cam_y, scale)
 
             size = b.visual_size
             if b.type in ("star", "primary_star"):
@@ -501,7 +534,7 @@ class OrbitSandbox:
         lines: List[str] = []
         lines.append(f"System: {self.system.name}")
         lines.append(
-            f"Sim time: {self.sim_time_years:8.3f} years   speed x{self.time_scale:.3f}"
+            f"View: {self.view_mode:<3}   Sim time: {self.sim_time_years:8.3f} years   speed x{self.time_scale:.3f}"
         )
         if self.focus_body:
             b = self.focus_body
@@ -545,7 +578,7 @@ class OrbitSandbox:
     def draw_help_overlay(self):
         help_lines = [
             "SPACE: play/pause   [ / ]: slower / faster time   +/- or wheel: zoom   0: reset zoom",
-            "TAB / Shift+TAB: cycle focus   Click body: focus   1: belts  2: moons  3: dwarfs on/off",
+            "TAB / Shift+TAB: cycle focus   Click body: focus   1: belts  2: moons  3: dwarfs   V: view top/iso",
         ]
         y = self.height - 40
         for line in help_lines:
