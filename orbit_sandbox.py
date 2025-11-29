@@ -355,6 +355,13 @@ class OrbitSandbox:
         if key == pygame.K_SPACE:
             self.running = not self.running
 
+        # Arrow keys: move focus inward/outward through sorted bodies
+        if key == pygame.K_UP:
+            self.cycle_focus(1)      # outward
+        if key == pygame.K_DOWN:
+            self.cycle_focus(-1)     # inward
+
+
         # Zoom
         if key in (pygame.K_EQUALS, pygame.K_PLUS, pygame.K_KP_PLUS):
             self.zoom *= 1.1
