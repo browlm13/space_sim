@@ -4,28 +4,31 @@ orbit_sandbox.py
 
 Fictional-system orbit sandbox.
 
-This version has:
-
-- Local SYSTEM view (what you already had):
-    * Top-down / isometric (V).
-    * Orbit-relative time scaling (inner faster, outer slower).
-    * Left-drag to pan, tap to select body.
-    * Moon mini-panel for the focused giant (M), with clickable moons.
-    * Wiki-ish sidebar with meta for the focused body.
-    * Distance measuring tool (D + drag).
-    * Optional camera follow (F) for the focused body.
+Modes
+-----
+- SYSTEM view:
+    * Top-down / isometric (V)
+    * Orbit-relative time scaling (inner faster, outer slower)
+    * Left-drag to pan, tap to select body or orbit
+    * Moon mini-panel (M) with clickable moons
+    * Wiki-ish sidebar with metadata
+    * Distance measuring tool (D + drag) in AU
+    * Optional camera follow (F) for the focused body
 
 - CLUSTER view:
-    * Stars = systems (RR, Tengri, Gargan, Octaeva), placed in a local “bubble”.
-    * Positions come from `offset` (or `pos_ly`) in universe.json.
-    * Left-drag to pan, zoom as usual.
-    * Click a star to “dive into” that system (back to SYSTEM view).
-    * D + drag still measures distances in LY, with light-time and travel times.
+    * Local 3–4 star bubble (RR, Tengri, Gargan, Octaeva, etc.)
+    * Positions from `offset` / `pos_ly` in universe.json
+    * D + drag measures distances between stars in light-years
 
-Toggles
--------
-G: toggle between SYSTEM view (local orbits) and CLUSTER view (star map)
-, / . : previous / next system in the universe.json list
+New in this version
+-------------------
+- Better click tolerance: easier to select bodies / orbits (larger hit radius).
+- Proper eccentric orbit support (still coplanar):
+    * Reads either `e` or `eccentricity` from JSON.
+    * Uses Kepler’s equation to compute elliptical positions.
+    * Orbit lines drawn as ellipses when e > 0.
+- Retrograde support:
+    * `retrograde: true` in JSON will flip direction of orbital motion.
 
 Usage
 -----
@@ -47,10 +50,36 @@ from typing import Dict, List, Optional, Tuple
 import pygame
 
 AU_IN_KM = 149_597_870.7
-LY_IN_KM = AU_IN_KM * 63241.077  # ~1 light-year in km
+LY_IN_KM = AU_IN_KM * 63_241.077  # ~1 light-year in km
 SHIP_SPEED_KM_S = 20.0
 SPEED_OF_LIGHT_KM_S = 299_792.458
 BASE_ORBIT_SECONDS = 20.0  # real seconds for one full orbit at speed x1
+
+
+# ---------- Kepler helper ----------
+
+
+def solve_kepler(M: float, e: float, tol: float = 1e-6, max_iter: int = 15) -> float:
+    """
+    Solve Kepler's equation M = E - e sin E for E (eccentric anomaly)
+    using Newton–Raphson iteration. M, E in radians.
+    """
+    M = M % (2.0 * math.pi)
+    if e < 0.8:
+        E = M
+    else:
+        E = math.pi
+
+    for _ in range(max_iter):
+        f = E - e * math.sin(E) - M
+        if abs(f) < tol:
+            break
+        fp = 1.0 - e * math.cos(E)
+        if fp == 0.0:
+            break
+        E -= f / fp
+
+    return E
 
 
 # ---------- Data model ----------
@@ -83,34 +112,45 @@ class Body:
         self.parent: Optional["Body"] = None
         self.children: List["Body"] = []
 
-        # Orbital parameters
+        # Orbital parameters (AU / dimensionless)
         self.a_au: float = float(raw.get("a", 0.0))
-        self.e: float = float(raw.get("e", 0.0))
+        # Support both "e" and "eccentricity" keys
+        self.e: float = float(raw.get("e", raw.get("eccentricity", 0.0)))
+        # Inclination is present but not yet used for 3D tilt in this branch
         self.inclination_deg: float = float(raw.get("inclination", 0.0))
+
+        # Retrograde?
+        self.retrograde: bool = bool(raw.get("retrograde", False))
 
         # Physical / visual
         self.radius_km: float = float(raw.get("radius", 0.0))
         self.visual_size: int = int(raw.get("visual_size", 4))
         self.color: Tuple[int, int, int] = hex_to_rgb(raw.get("color", "#ffffff"))
 
-        # Orbital period
+        # Orbital period (years). If missing but a_au > 0, use Kepler-ish scaling.
         period = raw.get("period_years")
         if period is None and self.a_au > 0:
             self.period_years: float = self.a_au ** 1.5
         else:
             self.period_years = float(period or 0.0)
 
-        # Initial phase
+        # Initial mean anomaly (we interpret angle as M, not necessarily true anomaly)
         phase_deg = raw.get("phase_deg")
         if phase_deg is None:
             self.initial_phase: float = random.random() * 2.0 * math.pi
         else:
             self.initial_phase = math.radians(float(phase_deg))
 
+        # We'll store the evolving "angle" as mean anomaly M
         self.angle: float = self.initial_phase
-        self.mean_motion: float = (
-            2.0 * math.pi / self.period_years if self.period_years > 0 else 0.0
-        )
+
+        if self.period_years > 0.0:
+            mm = 2.0 * math.pi / self.period_years
+        else:
+            mm = 0.0
+        if self.retrograde:
+            mm = -abs(mm)
+        self.mean_motion: float = mm
 
         # Lore / meta
         self.tags: List[str] = raw.get("tags", [])
@@ -124,7 +164,7 @@ class Body:
         return self.parent is None
 
     def is_belt(self) -> bool:
-        return self.type in ("belt", "asteroid_belt")
+        return self.type in ("belt", "asteroid_belt", "ring")
 
     def is_moon(self) -> bool:
         return self.type in ("moon", "satellite")
@@ -174,8 +214,32 @@ class SystemModel:
             body.pos = (0.0, 0.0)
         else:
             px, py = body.parent.pos
-            r = body.a_au
-            body.pos = (px + r * math.cos(body.angle), py + r * math.sin(body.angle))
+            a = body.a_au
+            e = body.e
+            if a <= 0.0:
+                body.pos = (px, py)
+            else:
+                M = body.angle
+                if e > 0.0:
+                    # elliptical orbit in orbital plane
+                    E = solve_kepler(M, e)
+                    cosE = math.cos(E)
+                    sinE = math.sin(E)
+                    r = a * (1.0 - e * cosE)
+                    # true anomaly
+                    nu = math.atan2(
+                        math.sqrt(max(0.0, 1.0 - e * e)) * sinE,
+                        cosE - e,
+                    )
+                    x_orb = r * math.cos(nu)
+                    y_orb = r * math.sin(nu)
+                else:
+                    # circular special case
+                    r = a
+                    x_orb = r * math.cos(M)
+                    y_orb = r * math.sin(M)
+                body.pos = (px + x_orb, py + y_orb)
+
         for child in body.children:
             self._update_positions_recursive(child)
 
@@ -240,7 +304,7 @@ def list_systems_in_universe(path: str) -> List[dict]:
     """
     Return a list of system descriptors from universe.json:
       [{ "id": ..., "name": ..., "offset": (x,y), "color": (r,g,b) }, ...]
-    offset is in 'map units' (we'll treat them as light-years for the cluster view).
+    offset is in 'map units' (we treat them as light-years for the cluster view).
     """
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -269,12 +333,7 @@ def list_systems_in_universe(path: str) -> List[dict]:
         color_hex = s.get("color", "#ffffff")
         color = hex_to_rgb(color_hex)
         systems.append(
-            {
-                "id": sid,
-                "name": name,
-                "offset": (ox, oy),
-                "color": color,
-            }
+            {"id": sid, "name": name, "offset": (ox, oy), "color": color}
         )
     return systems
 
@@ -304,7 +363,7 @@ class OrbitSandbox:
         self.system_defs = system_defs or []
         self.current_system_id = current_system_id or getattr(system, "id", "system")
 
-        # Mode: "system" (local orbits) vs "cluster" (star map)
+        # Map mode: "system" (local orbits) vs "cluster" (star map)
         self.map_mode = "system"
         self.view_mode = "top"      # "top" or "iso"
         self.scope_mode = "system"  # "system" or "local" (moon panel)
@@ -314,7 +373,7 @@ class OrbitSandbox:
         self.sim_time_years = 0.0
         self.running = True
 
-        # Time scaling (orbit-relative)
+        # Time scaling (orbit-relative around focused body)
         self.base_time_scale = 1.0
         self.speed_multiplier = 1.0
         self.time_scale = 1.0
@@ -323,11 +382,10 @@ class OrbitSandbox:
         self.cam_x = 0.0
         self.cam_y = 0.0
 
-        # Scaling
-        self.base_pixels_per_au = (
-            0.44 * min(self.width, self.height) / self.system.max_a_au
-        )
+        # Scaling for local systems
+        self.base_pixels_per_au = 0.44 * min(self.width, self.height) / self.system.max_a_au
 
+        # Scaling for cluster map (in "light-year units")
         if self.system_defs:
             xs = [sd["offset"][0] for sd in self.system_defs]
             ys = [sd["offset"][1] for sd in self.system_defs]
@@ -387,7 +445,7 @@ class OrbitSandbox:
             return self.cluster_pixels_per_unit * self.zoom
 
     def recalc_time_scale(self):
-        """Adjust time_scale so focused body’s orbit ~ BASE_ORBIT_SECONDS at speed x1."""
+        """Adjust time_scale so focused body's orbit ~ BASE_ORBIT_SECONDS at speed x1."""
         b = self.focus_body
         if b and b.period_years > 0:
             self.base_time_scale = b.period_years / BASE_ORBIT_SECONDS
@@ -437,7 +495,6 @@ class OrbitSandbox:
                     self.sim_time_years += dt_years
                     self.system.update(dt_years)
                     if self.follow_focus and self.focus_body and not self.left_dragging:
-                        # Smooth follow
                         tx, ty = self.focus_body.pos
                         alpha = 0.12
                         self.cam_x += (tx - self.cam_x) * alpha
@@ -452,9 +509,7 @@ class OrbitSandbox:
         self.system = new_system
         self.current_system_id = system_id
 
-        self.base_pixels_per_au = (
-            0.44 * min(self.width, self.height) / self.system.max_a_au
-        )
+        self.base_pixels_per_au = 0.44 * min(self.width, self.height) / self.system.max_a_au
 
         self.focusables = self.system.ordered_focusable_bodies()
         self.focus_index = 0 if self.focusables else -1
@@ -469,6 +524,7 @@ class OrbitSandbox:
         self.measure_dragging = False
         self.measure_start_world = None
         self.measure_end_world = None
+
         self.recalc_time_scale()
 
     def switch_system_relative(self, delta: int):
@@ -608,16 +664,15 @@ class OrbitSandbox:
                 dx = mx - self.left_drag_start_screen[0]
                 dy = my - self.left_drag_start_screen[1]
                 d2 = dx * dx + dy * dy
-                threshold2 = 16  # <= 4px = click, otherwise pan
+                # More forgiving click threshold (about 10px)
+                threshold2 = 100
                 if d2 <= threshold2:
                     if self.map_mode == "cluster":
-                        # click on star in cluster map
                         sys_id = self.pick_system_at(mx, my, scale)
                         if sys_id:
                             self.load_system_by_id(sys_id)
                             self.map_mode = "system"
                     else:
-                        # system mode: try moon panel first, then bodies
                         if not self.try_moon_panel_click(mx, my):
                             body = self.pick_body_at(mx, my, scale)
                             if body:
@@ -647,6 +702,7 @@ class OrbitSandbox:
         best_id = None
         best_d2 = float("inf")
         for sd in self.system_defs:
+            sid = sd["id"]
             ox, oy = sd["offset"]
             sx, sy = self.world_to_screen(ox, oy, scale)
             dx = sx - mx
@@ -655,7 +711,7 @@ class OrbitSandbox:
             r = 12
             if d2 <= r * r and d2 < best_d2:
                 best_d2 = d2
-                best_id = sd["id"]
+                best_id = sid
         return best_id
 
     def pick_body_at(self, mx: int, my: int, scale: float) -> Optional[Body]:
@@ -664,24 +720,27 @@ class OrbitSandbox:
         for b in self.system.bodies.values():
             if b.is_belt():
                 continue
-            # body hit
             sx, sy = self.world_to_screen(b.pos[0], b.pos[1], scale)
             dx = sx - mx
             dy = sy - my
             d2 = dx * dx + dy * dy
-            body_r = max(14, b.visual_size + 10)
+            # Larger clickable radius so it's easy to hit
+            body_r = max(18, b.visual_size + 12)
             score = float("inf")
             if d2 <= body_r * body_r:
                 score = d2
-            # orbit hit
+
+            # Orbit hit (for bodies with non-zero a)
             if b.parent and b.a_au > 0:
                 px, py = self.world_to_screen(b.parent.pos[0], b.parent.pos[1], scale)
                 d_center = math.hypot(mx - px, my - py)
+                # approximate orbit radius at parent's distance
                 r_orbit = b.a_au * scale
                 if r_orbit > 4:
                     diff = abs(d_center - r_orbit)
-                    if diff < 10:
+                    if diff < 14:
                         score = min(score, diff * diff)
+
             if score < best_score:
                 best_score = score
                 best_body = b
@@ -728,7 +787,7 @@ class OrbitSandbox:
 
     def draw(self):
         self.screen.fill((0, 0, 0))
-        self.moon_panel_state = None  # reset this frame
+        self.moon_panel_state = None  # reset each frame
 
         scale = self.current_scale()
 
@@ -803,24 +862,36 @@ class OrbitSandbox:
 
     def draw_orbit_for_body(self, b: Body, scale: float, color):
         parent = b.parent
-        if not parent:
+        if not parent or b.a_au <= 0.0:
             return
-        if self.view_mode == "top":
+
+        a = b.a_au
+        e = b.e
+
+        # circular shortcut (top view only)
+        if self.view_mode == "top" and e == 0.0:
             cx, cy = self.world_to_screen(parent.pos[0], parent.pos[1], scale)
-            r = max(1, int(b.a_au * scale))
+            r = max(1, int(a * scale))
             if r > 1:
                 pygame.draw.circle(self.screen, color, (int(cx), int(cy)), r, 1)
-        else:
-            steps = 72
-            pts = []
-            for i in range(steps + 1):
-                theta = 2.0 * math.pi * i / steps
-                wx = parent.pos[0] + b.a_au * math.cos(theta)
-                wy = parent.pos[1] + b.a_au * math.sin(theta)
-                sx, sy = self.world_to_screen(wx, wy, scale)
-                pts.append((int(sx), int(sy)))
-            if len(pts) > 1:
-                pygame.draw.lines(self.screen, color, False, pts, 1)
+            return
+
+        # Elliptical polyline (works for top & iso, circular is e=0 special case)
+        steps = 120
+        pts = []
+        for i in range(steps + 1):
+            nu = 2.0 * math.pi * i / steps
+            if e > 0.0:
+                p = a * (1.0 - e * e)  # semi-latus rectum
+                r = p / (1.0 + e * math.cos(nu))
+            else:
+                r = a
+            wx = parent.pos[0] + r * math.cos(nu)
+            wy = parent.pos[1] + r * math.sin(nu)
+            sx, sy = self.world_to_screen(wx, wy, scale)
+            pts.append((int(sx), int(sy)))
+        if len(pts) > 1:
+            pygame.draw.lines(self.screen, color, False, pts, 1)
 
     def draw_moon_panel(self, center_body: Body):
         moons = [m for m in center_body.children if not m.is_belt()]
@@ -886,8 +957,7 @@ class OrbitSandbox:
             self.screen.blit(txt, (20, 20))
             return
 
-        # Draw links (optional; here we draw nothing between them)
-        # Draw system nodes
+        # System nodes
         for sd in self.system_defs:
             sid = sd["id"]
             name = sd["name"]
@@ -900,8 +970,7 @@ class OrbitSandbox:
                 pygame.draw.circle(self.screen, (255, 255, 255), (int(sx), int(sy)), r + 3, 1)
             pygame.draw.circle(self.screen, color, (int(sx), int(sy)), r)
 
-            label = name
-            txt = self.small_font.render(label, True, (210, 210, 230))
+            txt = self.small_font.render(name, True, (210, 210, 230))
             self.screen.blit(txt, (int(sx) + 8, int(sy) - 4))
 
         # Measurement line in cluster space
