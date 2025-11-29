@@ -12,6 +12,7 @@ Features
 - Animate circular orbits using Kepler-style T ~ a^(3/2).
 - Hierarchical orbits: barycenter -> stars -> planets -> moons.
 - Top-down AND isometric view modes (toggle with V).
+- "System" vs "Local" scope (M key: full-screen moon-system view).
 - Time controls, zoom, focus, click-to-focus.
 - Info panel with orbit stats and simple lore metadata.
 
@@ -253,8 +254,10 @@ class OrbitSandbox:
         self.running = True
         self.time_scale = 1.0  # 1.0 = "1 sim year per real second" (roughly)
 
-        # NEW: view mode – "top" or "iso"
+        # Projection: "top" or "iso"
         self.view_mode = "top"
+        # Scope: "system" (whole system) or "local" (focused body's moons)
+        self.scope_mode = "system"
 
         # scaling: base pixels per AU (before zoom)
         self.base_pixels_per_au = 0.44 * min(self.width, self.height) / system.max_a_au
@@ -361,7 +364,6 @@ class OrbitSandbox:
         if key == pygame.K_DOWN:
             self.cycle_focus(-1)     # inward
 
-
         # Zoom
         if key in (pygame.K_EQUALS, pygame.K_PLUS, pygame.K_KP_PLUS):
             self.zoom *= 1.1
@@ -398,6 +400,15 @@ class OrbitSandbox:
         # NEW: view mode toggle
         if key == pygame.K_v:
             self.view_mode = "iso" if self.view_mode == "top" else "top"
+
+        # NEW: scope toggle (system vs local moon system)
+        if key == pygame.K_m:
+            if self.scope_mode == "system":
+                # only enter local view if the focused body has children
+                if self.focus_body and self.focus_body.children:
+                    self.scope_mode = "local"
+            else:
+                self.scope_mode = "system"
 
     def handle_click(self, pos):
         mx, my = pos
@@ -441,6 +452,19 @@ class OrbitSandbox:
 
     def draw(self):
         self.screen.fill((0, 0, 0))
+
+        if self.scope_mode == "local" and self.focus_body:
+            self.draw_local_view(self.focus_body)
+        else:
+            self.draw_system_view()
+
+        # Info panel & help
+        self.draw_info_panel()
+        self.draw_help_overlay()
+
+        pygame.display.flip()
+
+    def draw_system_view(self):
         cam_x, cam_y = self.camera_center()
         scale = self.base_pixels_per_au * self.zoom
 
@@ -487,45 +511,39 @@ class OrbitSandbox:
                     self.screen, (255, 255, 255), (int(sx), int(sy)), size + 4, 1
                 )
 
-        # Moon system mini-view
-        if self.focus_body and self.focus_body.children:
-            self.draw_moon_view(self.focus_body)
-
-        # Info panel & help
-        self.draw_info_panel()
-        self.draw_help_overlay()
-
-        pygame.display.flip()
-
-    def draw_moon_view(self, planet: Body):
-        rect = pygame.Rect(
-            int(self.width * 0.60),
-            int(self.height * 0.55),
-            int(self.width * 0.38),
-            int(self.height * 0.40),
-        )
-        pygame.draw.rect(self.screen, (10, 10, 10), rect)
-        pygame.draw.rect(self.screen, (60, 60, 60), rect, 1)
-
-        moons = [m for m in planet.children if not m.is_belt()]
+    def draw_local_view(self, center_body: Body):
+        """
+        Full-screen view of a body's local moon system.
+        Ignores isometric projection; always top-down and centered.
+        """
+        moons = [m for m in center_body.children if not m.is_belt()]
         if not moons:
+            # nothing special to show, just fall back
+            self.draw_system_view()
             return
 
+        # rectangle inset from the edge for some margins
+        rect = self.screen.get_rect().inflate(
+            -int(self.width * 0.15), -int(self.height * 0.25)
+        )
+
         max_a = max(m.a_au for m in moons) or 1.0
-        local_scale = 0.4 * min(rect.width, rect.height) / max_a
+        # scale so outermost moon fits nicely
+        local_scale = 0.45 * min(rect.width, rect.height) / max_a
 
         cx = rect.centerx
         cy = rect.centery
 
         # Orbits
+        orbit_color = (70, 70, 70)
         for m in moons:
             r = int(m.a_au * local_scale)
             if r <= 1:
                 continue
-            pygame.draw.circle(self.screen, (70, 70, 70), (cx, cy), r, 1)
+            pygame.draw.circle(self.screen, orbit_color, (cx, cy), r, 1)
 
-        # Planet in center
-        pygame.draw.circle(self.screen, planet.color, (cx, cy), 6)
+        # Central body
+        pygame.draw.circle(self.screen, center_body.color, (cx, cy), 8)
 
         # Moons
         for m in moons:
@@ -533,7 +551,8 @@ class OrbitSandbox:
             y = cy + math.sin(m.angle) * m.a_au * local_scale
             pygame.draw.circle(self.screen, m.color, (int(x), int(y)), 4)
 
-        label = f"{planet.name} moon system"
+        # Title
+        label = f"{center_body.name} moon system (local view)"
         txt = self.small_font.render(label, True, (200, 200, 200))
         self.screen.blit(txt, (rect.x + 5, rect.y + 5))
 
@@ -541,7 +560,7 @@ class OrbitSandbox:
         lines: List[str] = []
         lines.append(f"System: {self.system.name}")
         lines.append(
-            f"View: {self.view_mode:<3}   Sim time: {self.sim_time_years:8.3f} years   speed x{self.time_scale:.3f}"
+            f"View: {self.view_mode:<3}   Scope: {self.scope_mode:<6}   Sim time: {self.sim_time_years:8.3f} years   speed x{self.time_scale:.3f}"
         )
         if self.focus_body:
             b = self.focus_body
@@ -585,7 +604,7 @@ class OrbitSandbox:
     def draw_help_overlay(self):
         help_lines = [
             "SPACE: play/pause   [ / ]: slower / faster time   +/- or wheel: zoom   0: reset zoom",
-            "TAB / Shift+TAB: cycle focus   Click body: focus   1: belts  2: moons  3: dwarfs   V: view top/iso",
+            "TAB / Shift+TAB / ↑↓: cycle focus   Click: focus   M: system/local moons   1: belts  2: moons  3: dwarfs   V: top/iso",
         ]
         y = self.height - 40
         for line in help_lines:
