@@ -12,11 +12,11 @@ Features
 - Animate circular orbits using Kepler-style T ~ a^(3/2).
 - Hierarchical orbits: barycenter -> stars -> planets -> moons.
 - Top-down AND isometric view modes (toggle with V).
-- System vs Local (moon-system) scope (toggle with M).
+- System view always visible.
+- Optional moon-system mini panel for focused body with moons (toggle with M).
 - Time scale automatically tied to the focused body's orbital period
-  (by default 1 orbit ≈ 20 seconds of real time at speed x1).
-- Time controls, zoom, focus, click-to-focus.
-- Big clickable hit area for bodies + clickable orbit lines.
+  (by default 1 orbit ≈ BASE_ORBIT_SECONDS at speed x1).
+- Time controls, zoom, focus, click-to-focus (bodies + orbits).
 - Right-hand wiki sidebar with orbit stats + gravity, population, atmosphere, species, etc.
 
 Usage
@@ -268,7 +268,7 @@ class OrbitSandbox:
 
         # Projection: "top" or "iso"
         self.view_mode = "top"
-        # Scope: "system" (whole system) or "local" (focused body's moons)
+        # Scope: "system" (no moon panel) or "local" (show moon panel)
         self.scope_mode = "system"
 
         # scaling: base pixels per AU (before zoom)
@@ -428,7 +428,7 @@ class OrbitSandbox:
         if key == pygame.K_v:
             self.view_mode = "iso" if self.view_mode == "top" else "top"
 
-        # Scope toggle (system vs local moon system)
+        # Scope toggle: show/hide moon mini panel
         if key == pygame.K_m:
             if self.scope_mode == "system":
                 if self.focus_body and self.focus_body.children:
@@ -508,11 +508,18 @@ class OrbitSandbox:
     def draw(self):
         self.screen.fill((0, 0, 0))
 
-        if self.scope_mode == "local" and self.focus_body:
-            self.draw_local_view(self.focus_body)
-        else:
-            self.draw_system_view()
+        # Always show full system view
+        self.draw_system_view()
 
+        # Optional moon mini panel for focused body with moons
+        if (
+            self.scope_mode == "local"
+            and self.focus_body
+            and self.focus_body.children
+        ):
+            self.draw_moon_panel(self.focus_body)
+
+        # Sidebar + help text
         self.draw_info_panel()
         self.draw_help_overlay()
 
@@ -564,40 +571,48 @@ class OrbitSandbox:
                     self.screen, (255, 255, 255), (int(sx), int(sy)), size + 4, 1
                 )
 
-    def draw_local_view(self, center_body: Body):
+    def draw_moon_panel(self, center_body: Body):
+        """Mini-sim showing the focused body's moons in their own frame."""
         moons = [m for m in center_body.children if not m.is_belt()]
         if not moons:
-            self.draw_system_view()
             return
 
-        rect = self.screen.get_rect().inflate(
-            -int(self.width * 0.35),  # shrink left area a bit to leave space for sidebar
-            -int(self.height * 0.25)
+        sidebar_width = int(self.width * 0.32)
+        panel_width = self.width - sidebar_width - 20
+        panel_height = int(self.height * 0.30)
+        rect = pygame.Rect(
+            10,
+            self.height - panel_height - 10,
+            panel_width,
+            panel_height,
         )
 
+        pygame.draw.rect(self.screen, (8, 8, 20), rect)
+        pygame.draw.rect(self.screen, (80, 80, 110), rect, 1)
+
         max_a = max(m.a_au for m in moons) or 1.0
-        local_scale = 0.45 * min(rect.width, rect.height) / max_a
+        local_scale = 0.40 * min(rect.width, rect.height) / max_a
 
         cx = rect.centerx
         cy = rect.centery
 
-        orbit_color = (70, 70, 70)
+        orbit_color = (90, 90, 120)
         for m in moons:
             r = int(m.a_au * local_scale)
             if r <= 1:
                 continue
             pygame.draw.circle(self.screen, orbit_color, (cx, cy), r, 1)
 
-        pygame.draw.circle(self.screen, center_body.color, (cx, cy), 8)
+        pygame.draw.circle(self.screen, center_body.color, (cx, cy), 6)
 
         for m in moons:
             x = cx + math.cos(m.angle) * m.a_au * local_scale
             y = cy + math.sin(m.angle) * m.a_au * local_scale
-            pygame.draw.circle(self.screen, m.color, (int(x), int(y)), 4)
+            pygame.draw.circle(self.screen, m.color, (int(x), int(y)), 3)
 
-        label = f"{center_body.name} moon system (local view)"
-        txt = self.small_font.render(label, True, (200, 200, 200))
-        self.screen.blit(txt, (rect.x + 5, rect.y + 5))
+        label = f"{center_body.name} local system"
+        txt = self.small_font.render(label, True, (200, 200, 220))
+        self.screen.blit(txt, (rect.x + 6, rect.y + 6))
 
     def draw_info_panel(self):
         sidebar_width = int(self.width * 0.32)
@@ -611,11 +626,12 @@ class OrbitSandbox:
         lines.append(f"System: {self.system.name}")
         lines.append(f"View: {self.view_mode:<3}   Scope: {self.scope_mode:<6}")
         lines.append(f"Speed x{self.speed_multiplier:.3f}")
-        # If we have a focused body with a real orbit, show approximate seconds/orbit
+
         b = self.focus_body
         if b and b.period_years > 0:
             seconds_per_orbit = BASE_ORBIT_SECONDS / self.speed_multiplier
             lines.append(f"~{seconds_per_orbit:.1f}s per orbit at this speed")
+
         lines.append(f"Sim time: {self.sim_time_years:8.3f} years")
 
         if b:
@@ -629,7 +645,7 @@ class OrbitSandbox:
                 ship_days = ship_time_sec / 86400.0
                 lines.append(f"a = {b.a_au:.3f} AU   T = {period:.3f} years")
                 lines.append(
-                    f"Orbit ~ {circumference:,.0f} km; {ship_days:,.1f} days @ {SHIP_SPEED_KM_S:.0f} km/s"
+                    f"Orbit ~ {circumference:,.0f} km; {ship_days:,.1f} d @ {SHIP_SPEED_KM_S:.0f} km/s"
                 )
 
                 light_seconds = a_km / SPEED_OF_LIGHT_KM_S
@@ -708,7 +724,7 @@ class OrbitSandbox:
     def draw_help_overlay(self):
         help_lines = [
             "SPACE: play/pause   [ / ]: slower/faster (relative to orbit)   +/- or wheel: zoom   0: reset zoom",
-            "TAB / Shift+TAB / ↑↓: cycle focus   Click: body or orbit   M: system/local moons   1: belts  2: moons  3: dwarfs   V: top/iso",
+            "TAB / Shift+TAB / ↑↓: cycle focus   Click: body or orbit   M: toggle moon panel   1: belts  2: moons  3: dwarfs   V: top/iso",
         ]
         y = self.height - 40
         for line in help_lines:
