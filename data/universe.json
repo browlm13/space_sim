@@ -3,12 +3,30 @@
     {
       "id": "rr",
       "name": "Romulus–Remus",
-      "bodies_file": "rr_system.json"
+      "bodies_file": "rr_system.json",
+      "offset": [0.0, 0.0],
+      "color": "#ffd27f"
     },
     {
       "id": "tengri",
       "name": "Tengri",
-      "bodies_file": "tengri_system.json"
+      "bodies_file": "tengri_system.json",
+      "offset": [1.8, 0.2],
+      "color": "#ffe5cc"
+    },
+    {
+      "id": "gargan",
+      "name": "Gargan",
+      "bodies_file": "gargan_system.json",
+      "offset": [-1.4, 0.9],
+      "color": "#ff9f9f"
+    },
+    {
+      "id": "octaeva",
+      "name": "Octaeva",
+      "bodies_file": "octaeva_system.json",
+      "offset": [0.5, -1.6],
+      "color": "#a6c8ff"
     }
   ]
 }

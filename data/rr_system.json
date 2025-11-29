@@ -55,7 +55,7 @@
       "color": "#6ec4ff",
       "meta": {
         "gravity_g": 1.0,
-        "short_description": "Baseline habitable world for testing."
+        "short_description": "Baseline habitable world for sandbox testing."
       }
     },
     {

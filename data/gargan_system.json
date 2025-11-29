@@ -1,0 +1,52 @@
+{
+  "id": "gargan",
+  "name": "Gargan System",
+  "bodies": [
+    {
+      "id": "gargan_star",
+      "name": "Gargan",
+      "type": "star",
+      "a": 0,
+      "radius": 550000,
+      "visual_size": 10,
+      "color": "#ffb2b2",
+      "meta": {
+        "short_description": "Warmer, slightly angrier star in the local cluster."
+      }
+    },
+    {
+      "id": "ember",
+      "name": "Ember",
+      "type": "planet",
+      "parent": "gargan_star",
+      "a": 0.25,
+      "radius": 2200,
+      "visual_size": 4,
+      "color": "#ff7f50"
+    },
+    {
+      "id": "marrow",
+      "name": "Marrow",
+      "type": "planet",
+      "parent": "gargan_star",
+      "a": 0.9,
+      "radius": 6000,
+      "visual_size": 5,
+      "color": "#d0d0d0",
+      "meta": {
+        "gravity_g": 1.1,
+        "short_description": "Dense, grey super-Earth analogue."
+      }
+    },
+    {
+      "id": "frostband",
+      "name": "Frostband",
+      "type": "planet",
+      "parent": "gargan_star",
+      "a": 3.2,
+      "radius": 55000,
+      "visual_size": 6,
+      "color": "#99ccff"
+    }
+  ]
+}

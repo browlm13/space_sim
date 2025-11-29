@@ -15,8 +15,18 @@
       }
     },
     {
+      "id": "ashar",
+      "name": "Ashar",
+      "type": "planet",
+      "parent": "tengri_star",
+      "a": 0.3,
+      "radius": 2500,
+      "visual_size": 4,
+      "color": "#ffab6e"
+    },
+    {
       "id": "onyx",
-      "name": "Onyx (future weird orbit)",
+      "name": "Onyx",
       "type": "planet",
       "parent": "tengri_star",
       "a": 0.8,
@@ -31,36 +41,20 @@
       }
     },
     {
-      "id": "tengri_inner1",
-      "name": "Ashar",
-      "type": "planet",
-      "parent": "tengri_star",
-      "a": 0.3,
-      "radius": 2500,
-      "visual_size": 4,
-      "color": "#ffab6e",
-      "meta": {
-        "short_description": "Charred inner world."
-      }
-    },
-    {
-      "id": "tengri_outer1",
+      "id": "sarqa",
       "name": "Sarqa",
       "type": "planet",
       "parent": "tengri_star",
       "a": 2.0,
       "radius": 7000,
       "visual_size": 5,
-      "color": "#5fd1a5",
-      "meta": {
-        "short_description": "Cold, bright ringed world."
-      }
+      "color": "#5fd1a5"
     },
     {
-      "id": "sarqa_moon1",
+      "id": "kel",
       "name": "Kel",
       "type": "moon",
-      "parent": "tengri_outer1",
+      "parent": "sarqa",
       "a": 0.04,
       "radius": 1800,
       "visual_size": 3,

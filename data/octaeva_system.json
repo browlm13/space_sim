@@ -1,0 +1,51 @@
+{
+  "id": "octaeva",
+  "name": "Octaeva System",
+  "bodies": [
+    {
+      "id": "octaeva_star",
+      "name": "Octaeva",
+      "type": "star",
+      "a": 0,
+      "radius": 500000,
+      "visual_size": 10,
+      "color": "#a6c8ff",
+      "meta": {
+        "short_description": "Pale blue-white star, serene and sharp."
+      }
+    },
+    {
+      "id": "eidolon",
+      "name": "Eidolon",
+      "type": "planet",
+      "parent": "octaeva_star",
+      "a": 0.6,
+      "radius": 5000,
+      "visual_size": 5,
+      "color": "#8888ff",
+      "meta": {
+        "short_description": "High-cloud world; good for future weird weather lore."
+      }
+    },
+    {
+      "id": "ringmist",
+      "name": "Ringmist",
+      "type": "gas_giant",
+      "parent": "octaeva_star",
+      "a": 2.5,
+      "radius": 65000,
+      "visual_size": 7,
+      "color": "#d8e6ff"
+    },
+    {
+      "id": "ringmist_m1",
+      "name": "Halo",
+      "type": "moon",
+      "parent": "ringmist",
+      "a": 0.05,
+      "radius": 2000,
+      "visual_size": 3,
+      "color": "#ffffff"
+    }
+  ]
+}
