@@ -1,14 +1,76 @@
 {
- "systems": [
+  "meta": {
+    "title": "Cosmic Wrath – Local Cluster",
+    "version": 2,
+    "notes": "RR + Ajhar + Tengri + Gargan; positions and motions in light-years relative to galactic frame.",
+    "galactic_context": {
+      "region": "Orion Spur",
+      "distance_from_core_kly": 26.7,
+      "distance_from_galactic_plane_ly": 120,
+      "local_velocity_kms": 230,
+      "cluster_spread_ly": 5.5
+    }
+  },
+  "systems": [
     {
       "id": "rr",
-      "name": "Romulus–Remus System",
-      "bodies_file": "system.json"
+      "name": "Romulus–Remus",
+      "offset": [0.0, 0.0],
+      "color": "#ffd27f",
+      "bodies_file": "rr.json",
+      "spectral_class": "K0V / K2V",
+      "masses_solar": [0.85, 0.82],
+      "age_gy": 4.2,
+      "galactic_longitude": 127.5,
+      "galactic_latitude": -23.4,
+      "galactic_xyz": [0.0, 0.0, 0.0],
+      "radial_velocity_kms": 12,
+      "description": "Binary K-class stars with 12 major planets and habitable zones."
+    },
+    {
+      "id": "ajhar",
+      "name": "Ajhar",
+      "offset": [1.7, 0.6],
+      "color": "#ffb070",
+      "bodies_file": "ajhar.json",
+      "spectral_class": "F5V",
+      "masses_solar": [1.3],
+      "age_gy": 2.8,
+      "galactic_longitude": 128.2,
+      "galactic_latitude": -22.8,
+      "galactic_xyz": [1.65, 0.57, -0.08],
+      "radial_velocity_kms": 8,
+      "description": "Bright F-class star with advanced planetary system."
     },
     {
       "id": "tengri",
       "name": "Tengri",
-      "bodies_file": "system_tengri.json"
+      "offset": [-2.2, -0.4],
+      "color": "#7fe0ff",
+      "bodies_file": "tengri.json",
+      "spectral_class": "A2V",
+      "masses_solar": [1.95],
+      "age_gy": 1.2,
+      "galactic_longitude": 126.1,
+      "galactic_latitude": -23.9,
+      "galactic_xyz": [-2.14, -0.38, 0.15],
+      "radial_velocity_kms": -5,
+      "description": "Young A-class star with thin planetary disks."
+    },
+    {
+      "id": "gargan",
+      "name": "Gargan",
+      "bodies_file": "gargan_system.json",
+      "offset": [-1.4, 0.9],
+      "color": "#ff9f9f",
+      "spectral_class": "M4V",
+      "masses_solar": [0.55],
+      "age_gy": 8.5,
+      "galactic_longitude": 126.8,
+      "galactic_latitude": -23.1,
+      "galactic_xyz": [-1.35, 0.88, 0.22],
+      "radial_velocity_kms": 15,
+      "description": "Old M-dwarf with tidally-locked terrestrial worlds."
     }
   ]
 }
