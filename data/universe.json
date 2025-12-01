@@ -3,12 +3,16 @@
     {
       "id": "rr",
       "name": "Romulus–Remus System",
-      "bodies_file": "system.json"
+      "bodies_file": "system.json",
+      "offset": [0.0, 0.0],
+      "color": "#ffaa44"
     },
     {
       "id": "tengri",
       "name": "Tengri",
-      "bodies_file": "system_tengri.json"
+      "bodies_file": "tengri.json",
+      "offset": [150.0, -80.0],
+      "color": "#4488ff"
     }
   ]
 }
